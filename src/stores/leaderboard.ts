@@ -5,6 +5,7 @@ import moment from 'moment';
 import { getClient } from '~/util/awclient';
 import { useBucketsStore } from '~/stores/buckets';
 import { useCategoryStore } from '~/stores/categories';
+import { useSettingsStore } from '~/stores/settings';
 import { getWorkingDaysInRange, getMonthRange } from '~/util/time';
 import { categoryQuery } from '~/queries';
 
@@ -56,19 +57,19 @@ export const useLeaderboardStore = defineStore('leaderboard', {
     },
 
     prevMonth() {
-      const m = moment({ year: this.selectedYear, month: this.selectedMonth - 1 }).subtract(
-        1,
-        'month'
-      );
+      const m = moment({
+        year: this.selectedYear,
+        month: this.selectedMonth - 1,
+      }).subtract(1, 'month');
       this.selectedYear = m.year();
       this.selectedMonth = m.month() + 1;
     },
 
     nextMonth() {
-      const m = moment({ year: this.selectedYear, month: this.selectedMonth - 1 }).add(
-        1,
-        'month'
-      );
+      const m = moment({
+        year: this.selectedYear,
+        month: this.selectedMonth - 1,
+      }).add(1, 'month');
       // Don't go past current month
       const now = moment();
       if (m.isAfter(now, 'month')) return;
@@ -84,7 +85,12 @@ export const useLeaderboardStore = defineStore('leaderboard', {
       try {
         const bucketsStore = useBucketsStore();
         const categoryStore = useCategoryStore();
+        const settingsStore = useSettingsStore();
 
+        // Ensure settings are loaded from the server BEFORE loading categories,
+        // otherwise categoryStore.load() falls back to default categories
+        // instead of the Malachi server categories (with correct scores).
+        await settingsStore.ensureLoaded();
         await bucketsStore.ensureLoaded();
         await categoryStore.load();
 
@@ -160,8 +166,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
 
         const results = await Promise.all(promises);
         this.entries = results.filter(
-          (entry): entry is LeaderboardEntry =>
-            entry !== null && entry.totalProductiveSeconds > 0
+          (entry): entry is LeaderboardEntry => entry !== null && entry.totalProductiveSeconds > 0
         );
       } catch (err) {
         console.error('Failed to fetch leaderboard data:', err);

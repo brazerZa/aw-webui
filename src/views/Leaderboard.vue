@@ -146,16 +146,16 @@ div
 }
 
 .gold {
-  border-color: #FFD700;
+  border-color: #ffd700;
   background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
 
   .rank-badge {
-    background-color: #FFD700;
+    background-color: #ffd700;
     color: #333;
   }
 
   .crown-icon {
-    color: #FFD700;
+    color: #ffd700;
     margin-bottom: 4px;
   }
 
@@ -165,11 +165,11 @@ div
 }
 
 .silver {
-  border-color: #C0C0C0;
+  border-color: #c0c0c0;
   background: linear-gradient(135deg, #f8f8f8 0%, #e8e8e8 100%);
 
   .rank-badge {
-    background-color: #C0C0C0;
+    background-color: #c0c0c0;
   }
 
   .productive-time {
@@ -178,28 +178,28 @@ div
 }
 
 .bronze {
-  border-color: #CD7F32;
+  border-color: #cd7f32;
   background: linear-gradient(135deg, #fdf0e8 0%, #f5dcc8 100%);
 
   .rank-badge {
-    background-color: #CD7F32;
+    background-color: #cd7f32;
   }
 
   .productive-time {
-    color: #8B5A2B;
+    color: #8b5a2b;
   }
 }
 
 .rank-gold {
-  color: #FFD700;
+  color: #ffd700;
 }
 
 .rank-silver {
-  color: #C0C0C0;
+  color: #c0c0c0;
 }
 
 .rank-bronze {
-  color: #CD7F32;
+  color: #cd7f32;
 }
 
 .row-gold {
@@ -215,15 +215,15 @@ div
 }
 
 .progress-gold ::v-deep .progress-bar {
-  background-color: #FFD700;
+  background-color: #ffd700;
 }
 
 .progress-silver ::v-deep .progress-bar {
-  background-color: #C0C0C0;
+  background-color: #c0c0c0;
 }
 
 .progress-bronze ::v-deep .progress-bar {
-  background-color: #CD7F32;
+  background-color: #cd7f32;
 }
 </style>
 
@@ -283,10 +283,6 @@ export default {
     },
   },
 
-  mounted() {
-    this.leaderboardStore.fetchLeaderboard();
-  },
-
   watch: {
     'leaderboardStore.selectedYear'() {
       this.leaderboardStore.fetchLeaderboard();
@@ -294,6 +290,10 @@ export default {
     'leaderboardStore.selectedMonth'() {
       this.leaderboardStore.fetchLeaderboard();
     },
+  },
+
+  mounted() {
+    this.leaderboardStore.fetchLeaderboard();
   },
 
   methods: {
@@ -312,12 +312,14 @@ export default {
     avgTooltip(entry: LeaderboardEntry): string {
       const totalHrs = (entry.totalProductiveSeconds / 3600).toFixed(1);
       const avgHrs = (entry.avgProductiveSecondsPerDay / 3600).toFixed(1);
-      return `<div style="text-align: left;">` +
+      return (
+        `<div style="text-align: left;">` +
         `<b>Total productive:</b> ${totalHrs}h<br>` +
         `<b>Working days:</b> ${entry.workingDays}<br>` +
         `<b>Average per day:</b> ${avgHrs}h/day<br>` +
         `<small class="text-muted">${totalHrs}h / ${entry.workingDays} days</small>` +
-        `</div>`;
+        `</div>`
+      );
     },
 
     rankClass(index: number): string {
