@@ -177,7 +177,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               bid_afk: bid_afk[0],
               filter_afk: true,
               categories: categories,
-              filter_categories: [],
+              filter_categories: undefined,
             });
             console.log(`${DBG} [${hostname}] Query:`, query);
 
