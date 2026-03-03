@@ -5,7 +5,7 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
     b-navbar-nav.d-block.d-lg-none
       b-navbar-brand(to="/" style="background-color: transparent;")
         img.aligh-middle(src="/logo.png" style="height: 1.5em;")
-        span.ml-2.align-middle(style="font-size: 1em; color: #000;") Malachi ActivityWatch
+        span.ml-2.align-middle(style="font-size: 1em; color: #d16820;") Malachi ActivityWatch
 
     b-navbar-toggle(target="nav-collapse")
 
@@ -44,11 +44,16 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
             icon(name="stopwatch")
             | Stopwatch
 
+        b-nav-item(to="/leaderboard")
+          div.px-2.px-lg-1
+            icon(name="trophy")
+            | Leaderboard
+
       // Brand on large screens (centered)
       b-navbar-nav.abs-center.d-none.d-lg-block
         b-navbar-brand(to="/" style="background-color: transparent;")
           img.ml-0.aligh-middle(src="/logo.png" style="height: 1.5em;")
-          span.ml-2.align-middle(style="font-size: 1.0em; color: #000;") Malachi ActivityWatch
+          span.ml-2.align-middle(style="font-size: 1.0em; color: #d16820;") Malachi ActivityWatch
 
       b-navbar-nav.ml-auto
         b-nav-item-dropdown
@@ -107,6 +112,7 @@ import 'vue-awesome/icons/chart-line'; // TODO: switch to chart-column, when vue
 import 'vue-awesome/icons/chart-pie';
 import 'vue-awesome/icons/flag-checkered';
 import 'vue-awesome/icons/stopwatch';
+import 'vue-awesome/icons/trophy';
 import 'vue-awesome/icons/cog';
 import 'vue-awesome/icons/tools';
 import 'vue-awesome/icons/history';
@@ -188,8 +194,7 @@ export default {
 
 .aw-navbar {
   background-color: white;
-  border: solid $lightBorderColor;
-  border-width: 0 0 1px 0;
+  border-bottom: 3px solid $primaryColor;
 }
 
 .nav-item {
@@ -200,7 +205,7 @@ export default {
   border-radius: 0.5em;
 
   &:hover {
-    background-color: #ddd;
+    background-color: $primaryVeryLight;
   }
 }
 
@@ -212,10 +217,21 @@ export default {
 </style>
 
 <style lang="scss">
+@import '../style/globals';
+
 // Needed because dropdown somehow doesn't properly work with scoping
 .nav-item {
   .nav-link {
     color: #555 !important;
+
+    &:hover {
+      color: $primaryDark !important;
+    }
+  }
+
+  &.active .nav-link,
+  &.router-link-active .nav-link {
+    color: $primaryColor !important;
   }
 }
 </style>

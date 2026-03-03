@@ -31,3 +31,27 @@ body {
   border: 1px solid $lightBorderColor;
   border-radius: 5px;
 }
+
+// Malachi brand accents
+a {
+  color: $primaryColor;
+
+  &:hover {
+    color: $primaryDark;
+  }
+}
+
+.btn-primary {
+  background-color: $primaryColor;
+  border-color: $primaryColor;
+
+  &:hover,
+  &:focus {
+    background-color: $primaryDark;
+    border-color: $primaryDark;
+  }
+}
+
+.text-primary {
+  color: $primaryColor !important;
+}

@@ -94,3 +94,37 @@ export function get_today_with_offset(offset?: string): string {
   const offset_dur = get_offset_duration(offset);
   return moment().subtract(offset_dur).startOf('day').format('YYYY-MM-DD');
 }
+
+/**
+ * Count the number of working days (Mon-Fri) between two dates (inclusive).
+ * Handles partial weeks correctly (e.g. if start is Wednesday, counts Wed-Fri = 3 days).
+ */
+export function getWorkingDaysInRange(start: Date | string, end: Date | string): number {
+  const s = moment(start).startOf('day');
+  const e = moment(end).startOf('day');
+  let count = 0;
+  const current = s.clone();
+  while (current.isSameOrBefore(e)) {
+    const day = current.isoWeekday(); // 1=Mon, 7=Sun
+    if (day <= 5) {
+      count++;
+    }
+    current.add(1, 'day');
+  }
+  return count;
+}
+
+/**
+ * Get the start and end dates for a given calendar month.
+ * If the month is the current month, end is capped at today.
+ * @returns [start, end] as moment objects
+ */
+export function getMonthRange(year: number, month: number): [moment.Moment, moment.Moment] {
+  const start = moment({ year, month: month - 1, day: 1 }); // month is 0-indexed in moment
+  let end = start.clone().endOf('month').startOf('day');
+  const today = moment().startOf('day');
+  if (end.isAfter(today)) {
+    end = today;
+  }
+  return [start, end];
+}
