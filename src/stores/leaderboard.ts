@@ -82,6 +82,8 @@ export const useLeaderboardStore = defineStore('leaderboard', {
       this.error = null;
       this.entries = [];
 
+      const DBG = '[Leaderboard]';
+
       try {
         const bucketsStore = useBucketsStore();
         const categoryStore = useCategoryStore();
@@ -90,34 +92,85 @@ export const useLeaderboardStore = defineStore('leaderboard', {
         // Ensure settings are loaded from the server BEFORE loading categories,
         // otherwise categoryStore.load() falls back to default categories
         // instead of the Malachi server categories (with correct scores).
+        console.log(`${DBG} Step 1: Loading settings...`);
         await settingsStore.ensureLoaded();
+        console.log(`${DBG} Settings loaded:`, {
+          _loaded: settingsStore._loaded,
+          classesCount: settingsStore.classes?.length,
+          classesFirst3: settingsStore.classes?.slice(0, 3).map(c => ({
+            name: c.name,
+            ruleType: c.rule?.type,
+            score: c.data?.score,
+          })),
+        });
+
+        console.log(`${DBG} Step 2: Loading buckets...`);
         await bucketsStore.ensureLoaded();
+        console.log(`${DBG} Buckets loaded:`, {
+          totalBuckets: bucketsStore.buckets?.length,
+          sampleBuckets: bucketsStore.buckets?.slice(0, 5).map(b => ({
+            id: b.id,
+            type: b.type,
+            hostname: b.hostname,
+          })),
+        });
+        console.log(`${DBG} Hosts discovered:`, bucketsStore.hosts);
+
+        console.log(`${DBG} Step 3: Loading categories...`);
         await categoryStore.load();
+        console.log(`${DBG} Categories loaded:`, {
+          classesCount: categoryStore.classes?.length,
+          classesForQueryCount: categoryStore.classes_for_query?.length,
+          classesFirst5: categoryStore.classes?.slice(0, 5).map(c => ({
+            name: c.name,
+            ruleType: c.rule?.type,
+            regex: c.rule?.regex?.substring(0, 50),
+            score: c.data?.score,
+          })),
+          classesForQueryFirst5: categoryStore.classes_for_query?.slice(0, 5).map(([name, rule]) => ({
+            name,
+            ruleType: rule?.type,
+            regex: rule?.regex?.substring(0, 50),
+          })),
+        });
 
         const hosts = bucketsStore.hosts.filter(h => h && h !== 'unknown');
+        console.log(`${DBG} Filtered hosts (excluding unknown):`, hosts);
+
+        if (hosts.length === 0) {
+          console.warn(`${DBG} No hosts found! Leaderboard will be empty.`);
+          console.warn(`${DBG} All bucket hostnames:`, bucketsStore.buckets?.map(b => b.hostname));
+        }
 
         const [monthStart, monthEnd] = getMonthRange(this.selectedYear, this.selectedMonth);
         const workingDays = getWorkingDaysInRange(monthStart, monthEnd);
 
         const timeperiodStr =
           monthStart.format() + '/' + monthEnd.clone().add(1, 'day').startOf('day').format();
+        console.log(`${DBG} Time range:`, { timeperiodStr, workingDays, monthStart: monthStart.format(), monthEnd: monthEnd.format() });
 
         // Query each host in parallel
         const promises = hosts.map(async (hostname): Promise<LeaderboardEntry | null> => {
           try {
             const avail = bucketsStore.available(hostname);
+            console.log(`${DBG} [${hostname}] Availability:`, avail);
+
             if (!avail.window) {
+              console.warn(`${DBG} [${hostname}] No window data available, skipping`);
               return null;
             }
 
             const bid_window = bucketsStore.bucketsWindow(hostname);
             const bid_afk = bucketsStore.bucketsAFK(hostname);
+            console.log(`${DBG} [${hostname}] Buckets:`, { bid_window, bid_afk });
 
             if (bid_window.length === 0 || bid_afk.length === 0) {
+              console.warn(`${DBG} [${hostname}] Missing window or AFK bucket, skipping`);
               return null;
             }
 
             const categories = categoryStore.classes_for_query;
+            console.log(`${DBG} [${hostname}] Categories for query: ${categories.length} rules`);
 
             const query = categoryQuery({
               bid_window: bid_window[0],
@@ -126,10 +179,14 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               categories: categories,
               filter_categories: [],
             });
+            console.log(`${DBG} [${hostname}] Query:`, query);
 
             const result = await getClient().query([timeperiodStr], query);
+            console.log(`${DBG} [${hostname}] Raw result keys:`, result ? Object.keys(result[0] || {}) : 'null');
+            console.log(`${DBG} [${hostname}] cat_events count:`, result?.[0]?.cat_events?.length ?? 'N/A');
 
             if (!result || !result[0] || !result[0].cat_events) {
+              console.warn(`${DBG} [${hostname}] No cat_events in result, skipping. Result:`, result);
               return null;
             }
 
@@ -139,6 +196,15 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             let totalProductiveSeconds = 0;
             let totalTrackedSeconds = 0;
 
+            // Log first 10 events for debugging
+            const debugEvents = catEvents.slice(0, 10);
+            console.log(`${DBG} [${hostname}] First ${debugEvents.length} cat_events:`);
+            for (const event of debugEvents) {
+              const categoryName = event.data?.$category || ['Uncategorized'];
+              const score = categoryStore.get_category_score(categoryName);
+              console.log(`${DBG}   cat=${JSON.stringify(categoryName)} score=${score} duration=${event.duration}s`);
+            }
+
             for (const event of catEvents) {
               const categoryName = event.data?.$category || ['Uncategorized'];
               const score = categoryStore.get_category_score(categoryName);
@@ -147,6 +213,13 @@ export const useLeaderboardStore = defineStore('leaderboard', {
                 totalProductiveSeconds += event.duration;
               }
             }
+
+            console.log(`${DBG} [${hostname}] Totals:`, {
+              totalProductiveSeconds,
+              totalTrackedSeconds,
+              productiveHours: (totalProductiveSeconds / 3600).toFixed(1),
+              trackedHours: (totalTrackedSeconds / 3600).toFixed(1),
+            });
 
             const avgProductiveSecondsPerDay =
               workingDays > 0 ? totalProductiveSeconds / workingDays : 0;
@@ -159,17 +232,20 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               avgProductiveSecondsPerDay,
             };
           } catch (err) {
-            console.warn(`Failed to fetch data for host ${hostname}:`, err);
+            console.warn(`${DBG} [${hostname}] FAILED:`, err);
             return null;
           }
         });
 
         const results = await Promise.all(promises);
+        console.log(`${DBG} All host results:`, results);
+
         this.entries = results.filter(
           (entry): entry is LeaderboardEntry => entry !== null && entry.totalProductiveSeconds > 0
         );
+        console.log(`${DBG} Final entries (productive > 0):`, this.entries);
       } catch (err) {
-        console.error('Failed to fetch leaderboard data:', err);
+        console.error(`${DBG} FATAL ERROR:`, err);
         this.error = 'Failed to load leaderboard data. Please try again.';
       } finally {
         this.loading = false;
