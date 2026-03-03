@@ -8,7 +8,7 @@ a, button, span, div, select {
   outline: none;
 }
 
-body, button, html, table {
+body, button, html, table, pre, code {
   color: #e9ebf0 !important;
 }
 
@@ -171,7 +171,7 @@ hr {
   background-color: #282c32 !important;
 }
 
-#visualization *, svg,
+#visualization *:not([style*="border:"]):not([style*="border-color:"]), svg,
 .nav.nav-tabs,
 .btn-outline-secondary {
   border-color: #282c32 !important;

@@ -50,7 +50,7 @@ npm run build
 
 ### By copying the web-assets to your main install
 
-You can run a development version of aw-webui with your main version of ActivityWatch by building it (or fetching the latest build from CI) and replacing placing the contents of the `static` directory of your aw-server (or aw-server-rust) installation. For simplicity, back up the original directory for easier switching back.
+You can run a development version of aw-webui with your main version of ActivityWatch by building it (or fetching the latest build from CI) and replacing the contents of the `static` directory of your aw-server (or aw-server-rust) installation. For simplicity, back up the original directory for easier switching back.
 
 The assets are stored in the following directories (relative to your installation directory), depending on if you use aw-server-python (default) or aw-server-rust:
 
@@ -61,6 +61,17 @@ You can copy the assets manually from your `make build` or `npm run build` outpu
 
 Once you've put the files in the directories, you may have to do a hard refresh in your browser to invalidate any stale caches.
 
+### Using `--webpath` with aw-server-rust
+
+Instead of copying files, `aw-server-rust` supports loading the web UI from a custom path via the `--webpath` flag. This is especially useful on platforms where the server bundles static assets into the executable (e.g. Windows):
+
+```bash
+# Point aw-server-rust to your local build output
+aw-server-rust --webpath /path/to/aw-webui/dist
+```
+
+This avoids having to copy files and makes it easy to switch between development and production builds.
+
 ### Using your main install's data
 
 If you want to actively iterate on `aw-webui` with your local production data (with your production server running), you'll want to use a development build, automatically update it, and connect to your production data. To do this, in `aw-webui` source directory, in one terminal window run:
@@ -69,7 +80,7 @@ If you want to actively iterate on `aw-webui` with your local production data (w
 AW_SERVER_URL="'http://localhost:5600'" npx vue-cli-service build --watch --dest=../aw-server/static
 ```
 
-If you want to add `debugger` statements in your code and otherwise break linting rules, you'll need to add a `--skip-plugins=no-debugger` to that command. 
+If you want to add `debugger` statements in your code and otherwise break linting rules, you'll need to add a `--skip-plugins=no-debugger` to that command.
 Then, in another terminal (with your venv activated) run:
 
 ```shell

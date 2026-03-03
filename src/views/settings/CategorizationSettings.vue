@@ -44,11 +44,11 @@ import { mapState, mapGetters } from 'pinia';
 import CategoryEditTree from '~/components/CategoryEditTree.vue';
 import CategoryEditModal from '~/components/CategoryEditModal.vue';
 import 'vue-awesome/icons/undo';
-import router from '~/route';
 
 import { useCategoryStore } from '~/stores/categories';
 
 import _ from 'lodash';
+import { downloadFile } from '~/util/export';
 
 const confirmationMessage = 'Your categories have unsaved changes, are you sure you want to leave?';
 
@@ -61,7 +61,6 @@ export default {
   data: () => ({
     categoryStore: useCategoryStore(),
     editingId: null,
-    routerGuardRemover: null,
   }),
   computed: {
     ...mapState(useCategoryStore, ['classes_unsaved_changes']),
@@ -70,34 +69,13 @@ export default {
   mounted() {
     this.categoryStore.load();
 
-    // uses beforeunload event to warn user if they have
-    // unsaved changes and are about to leave the page
-    // also needs to be hooked into the router using the
-    // beforeEach hook
+    // Warn user about unsaved changes when closing/refreshing the browser tab.
+    // Route navigation guard is handled by the parent Settings.vue component
+    // using beforeRouteLeave (automatically cleaned up by Vue Router).
     window.addEventListener('beforeunload', this.beforeUnload);
-
-    this.routerGuardRemover = router.beforeEach((to, from, next) => {
-      try {
-        if (this.classes_unsaved_changes) {
-          if (confirm(confirmationMessage)) {
-            next();
-          } else {
-            next(false);
-          }
-        } else {
-          next();
-        }
-      } catch (e) {
-        console.error('Error in router.beforeEach: ', e);
-        next();
-      }
-    });
   },
   beforeDestroy() {
     window.removeEventListener('beforeunload', this.beforeUnload);
-    if (this.routerGuardRemover) {
-      this.routerGuardRemover();
-    }
   },
   methods: {
     addClass: function () {
@@ -122,27 +100,14 @@ export default {
     hideEditModal: function () {
       this.editingId = null;
     },
-    exportClasses: function () {
+    exportClasses: async function () {
       console.log('Exporting categories...');
 
       const export_data = {
         categories: this.categoryStore.classes,
       };
-      // Pretty-format it for easier reading
       const text = JSON.stringify(export_data, null, 2);
-      const filename = 'aw-category-export.json';
-
-      // Initiate downloading a file by creating a hidden button and clicking it
-      const element = document.createElement('a');
-      element.setAttribute(
-        'href',
-        'data:application/json;charset=utf-8,' + encodeURIComponent(text)
-      );
-      element.setAttribute('download', filename);
-      element.style.display = 'none';
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
+      await downloadFile('aw-category-export.json', text, 'application/json');
     },
     importCategories: async function (elem) {
       console.log('Importing categories...');

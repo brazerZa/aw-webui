@@ -123,24 +123,48 @@ export function getTitleAttr(bucket: { type?: string }, e: IEvent) {
   } else if (bucket.type?.startsWith('general.stopwatch')) {
     return e.data.label;
   } else {
-    return e.data.title;
+    const title = e.data.title;
+    if (title && typeof title === 'string') {
+      return title;
+    }
+
+    const keys = Object.keys(e.data);
+    if (keys.length === 1) {
+      const val = e.data[keys[0]];
+      if (typeof val === 'string') {
+        return val.length > 50 ? val.slice(0, 50) : val;
+      }
+    }
+
+    return '';
   }
 }
 
-export function getCategoryColorFromEvent(bucket: IBucket, e: IEvent) {
+export function getCategorizationStringFromEvent(bucket: IBucket, e: IEvent): string | null {
   if (bucket.type == 'currentwindow') {
     // using linebreak and "m" regex flag to make `$` and `^` work
-    return getCategoryColorFromString(e.data.app + '\n' + e.data.title);
+    return e.data.app + '\n' + e.data.title;
   } else if (bucket.type == 'web.tab.current') {
     // same as above
-    return getCategoryColorFromString(e.data.title + '\n' + e.data.url);
-  } else if (bucket.type == 'afkstatus') {
-    return getColorFromString(e.data.status);
+    return e.data.title + '\n' + e.data.url;
   } else if (bucket.type?.startsWith('app.editor')) {
-    return getCategoryColorFromString(e.data.file);
+    return e.data.file;
   } else if (bucket.type?.startsWith('general.stopwatch')) {
-    return getCategoryColorFromString(e.data.label);
-  } else {
-    return getColorFromString(getTitleAttr(bucket, e));
+    return e.data.label;
   }
+
+  return null;
+}
+
+export function getCategoryColorFromEvent(bucket: IBucket, e: IEvent) {
+  const categorizationString = getCategorizationStringFromEvent(bucket, e);
+  if (categorizationString !== null) {
+    return getCategoryColorFromString(categorizationString);
+  }
+
+  if (bucket.type == 'afkstatus') {
+    return getColorFromString(e.data.status);
+  }
+
+  return getColorFromString(getTitleAttr(bucket, e));
 }
