@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malachi - Employee of the Month</title>
+<link rel="icon" type="image/png" href="logo.png">
+<style>
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #f5f6fa;
+  color: #333;
+  min-height: 100vh;
+}
+
+/* ===== Brand Colors ===== */
+:root {
+  --brand: #d16820;
+  --brand-dark: #a85019;
+  --brand-light: #e8935a;
+  --brand-vlight: #fdf0e8;
+  --gold: #ffd700;
+  --gold-dark: #b8860b;
+  --gold-bg1: #fff9e6;
+  --gold-bg2: #fff3cc;
+  --silver: #c0c0c0;
+  --silver-bg1: #f8f8f8;
+  --silver-bg2: #e8e8e8;
+  --bronze: #cd7f32;
+  --bronze-dark: #8b5a2b;
+  --bronze-bg1: #fdf0e8;
+  --bronze-bg2: #f5dcc8;
+}
+
+/* ===== Navbar ===== */
+.navbar {
+  background: var(--brand);
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.navbar img { height: 36px; width: 36px; border-radius: 4px; }
+.navbar h1 { font-size: 1.2em; font-weight: 600; }
+
+/* ===== Container ===== */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* ===== Header Row ===== */
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-row h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.month-nav .label {
+  min-width: 160px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05em;
+}
+.month-nav button {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  transition: background 0.15s;
+}
+.month-nav button:hover:not(:disabled) { background: #eee; }
+.month-nav button:disabled { opacity: 0.4; cursor: default; }
+
+/* ===== Working Days Label ===== */
+.working-days {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 20px;
+}
+
+/* ===== Status Messages ===== */
+.status-msg {
+  text-align: center;
+  padding: 48px 16px;
+  color: #888;
+}
+.status-msg.error { color: #c0392b; }
+.spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #eee;
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Podium ===== */
+.podium {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.podium-card {
+  border-radius: 12px;
+  border: 2px solid #ddd;
+  padding: 20px 16px;
+  text-align: center;
+  width: 220px;
+  position: relative;
+  transition: transform 0.2s;
+}
+.podium-card:hover { transform: translateY(-4px); }
+
+.podium-card .rank-badge {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 1.2em;
+  color: white;
+}
+.podium-card .hostname {
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-top: 8px;
+}
+.podium-card .productive-time {
+  font-size: 1.4em;
+  font-weight: bold;
+  margin-top: 4px;
+}
+.podium-card .avg-label {
+  margin-top: 6px;
+  color: #888;
+  font-size: 0.85em;
+  cursor: help;
+}
+
+/* Gold */
+.podium-card.gold {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, var(--gold-bg1) 0%, var(--gold-bg2) 100%);
+  order: 2;
+}
+.podium-card.gold .rank-badge { background: var(--gold); color: #333; }
+.podium-card.gold .productive-time { color: var(--gold-dark); }
+.podium-card.gold .crown {
+  color: var(--gold);
+  font-size: 1.4em;
+  margin-bottom: 4px;
+}
+
+/* Silver */
+.podium-card.silver {
+  border-color: var(--silver);
+  background: linear-gradient(135deg, var(--silver-bg1) 0%, var(--silver-bg2) 100%);
+  order: 1;
+}
+.podium-card.silver .rank-badge { background: var(--silver); }
+.podium-card.silver .productive-time { color: #666; }
+
+/* Bronze */
+.podium-card.bronze {
+  border-color: var(--bronze);
+  background: linear-gradient(135deg, var(--bronze-bg1) 0%, var(--bronze-bg2) 100%);
+  order: 3;
+}
+.podium-card.bronze .rank-badge { background: var(--bronze); }
+.podium-card.bronze .productive-time { color: var(--bronze-dark); }
+
+/* ===== Table ===== */
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.ranking-table th {
+  background: #f8f8f8;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #555;
+  border-bottom: 2px solid #eee;
+}
+.ranking-table th.center { text-align: center; }
+.ranking-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+.ranking-table td.center { text-align: center; }
+.ranking-table tr:last-child td { border-bottom: none; }
+
+.ranking-table tr.row-gold { background: rgba(255,215,0,0.05); }
+.ranking-table tr.row-silver { background: rgba(192,192,192,0.05); }
+.ranking-table tr.row-bronze { background: rgba(205,127,50,0.05); }
+
+.rank-text { font-weight: bold; }
+.rank-text.rank-gold { color: var(--gold-dark); }
+.rank-text.rank-silver { color: var(--silver); }
+.rank-text.rank-bronze { color: var(--bronze); }
+
+.employee-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.employee-cell .icon { font-size: 1em; }
+.employee-cell .icon.rank-gold { color: var(--gold-dark); }
+.employee-cell .icon.rank-silver { color: var(--silver); }
+.employee-cell .icon.rank-bronze { color: var(--bronze); }
+.employee-cell .name { font-weight: 600; }
+
+/* Progress bar */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.progress-bar-bg {
+  flex: 1;
+  height: 20px;
+  background: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  background: var(--brand);
+}
+.progress-bar-fill.bar-gold { background: var(--gold); }
+.progress-bar-fill.bar-silver { background: var(--silver); }
+.progress-bar-fill.bar-bronze { background: var(--bronze); }
+.progress-pct { font-size: 0.85em; color: #888; min-width: 36px; text-align: right; }
+
+/* Avg tooltip */
+.avg-cell { cursor: help; position: relative; }
+.avg-cell .tooltip-box {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.82em;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+.avg-cell:hover .tooltip-box { display: block; }
+
+/* ===== Footer ===== */
+.footer {
+  text-align: center;
+  padding: 24px 16px;
+  color: #aaa;
+  font-size: 0.8em;
+}
+
+/* ===== Auto-refresh indicator ===== */
+.refresh-info {
+  text-align: center;
+  color: #aaa;
+  font-size: 0.8em;
+  margin-top: 16px;
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <img src="logo.png" alt="Malachi">
+  <h1>Malachi ActivityWatch</h1>
+</div>
+
+<div class="container">
+  <div class="header-row">
+    <h2>&#127942; Employee of the Month</h2>
+    <div class="month-nav">
+      <button id="btn-prev" onclick="prevMonth()">&lsaquo;</button>
+      <span class="label" id="month-label"></span>
+      <button id="btn-next" onclick="nextMonth()">&rsaquo;</button>
+    </div>
+  </div>
+
+  <div class="working-days" id="working-days-label"></div>
+
+  <div id="status"></div>
+  <div id="podium"></div>
+  <div id="table-wrap"></div>
+
+  <div class="refresh-info" id="refresh-info"></div>
+</div>
+
+<div class="footer">
+  Malachi ActivityWatch &mdash; Public Leaderboard
+</div>
+
+<script>
+/* ============================================================
+   Malachi Public Leaderboard — Standalone vanilla JS
+   Ported from aw-webui Vue leaderboard (v0.13.31-stoep)
+   ============================================================ */
+
+// ---- State ----
+var state = {
+  selectedYear: new Date().getFullYear(),
+  selectedMonth: new Date().getMonth() + 1, // 1-indexed
+  loading: false,
+  error: null,
+  entries: [],       // LeaderboardEntry[]
+  ranked: [],        // sorted, filtered
+  workingDays: 0,
+  totalWorkingDaysInMonth: 0,
+  isCurrentMonth: true
+};
+
+// Auto-refresh every 5 minutes
+var REFRESH_INTERVAL = 5 * 60 * 1000;
+
+// ---- Month Names ----
+var MONTHS = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December'
+];
+
+// ---- Time Utilities ----
+
+function getMonthRange(year, month) {
+  // month is 1-indexed
+  var start = new Date(year, month - 1, 1);
+  var end = new Date(year, month, 0); // last day of month
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  if (end > today) {
+    end = today;
+  }
+  return [start, end];
+}
+
+function getWorkingDaysInRange(start, end) {
+  var s = new Date(start);
+  s.setHours(0,0,0,0);
+  var e = new Date(end);
+  e.setHours(0,0,0,0);
+  var count = 0;
+  var current = new Date(s);
+  while (current <= e) {
+    var day = current.getDay(); // 0=Sun, 6=Sat
+    if (day >= 1 && day <= 5) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
+function formatDuration(seconds) {
+  if (seconds === undefined || seconds === null || isNaN(seconds)) return '0s';
+  seconds = Math.floor(seconds);
+  if (seconds < 0) seconds = 0;
+  var h = Math.floor(seconds / 3600);
+  var m = Math.floor((seconds % 3600) / 60);
+  var s = seconds % 60;
+  if (h > 0) return h + 'h ' + m + 'm ' + s + 's';
+  if (m > 0) return m + 'm ' + s + 's';
+  return s + 's';
+}
+
+function toISOLocal(date) {
+  // Format as YYYY-MM-DDTHH:mm:ss+offset (matching moment().format())
+  var d = new Date(date);
+  var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+  var tzOffset = -d.getTimezoneOffset();
+  var sign = tzOffset >= 0 ? '+' : '-';
+  var absOff = Math.abs(tzOffset);
+  var offH = pad(Math.floor(absOff / 60));
+  var offM = pad(absOff % 60);
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+    'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+    sign + offH + ':' + offM;
+}
+
+function makeTimeperiod(monthStart, monthEnd) {
+  // AW timeperiod: start/end+1day (ISO 8601 interval)
+  var endPlusOne = new Date(monthEnd);
+  endPlusOne.setDate(endPlusOne.getDate() + 1);
+  endPlusOne.setHours(0,0,0,0);
+  return toISOLocal(monthStart) + '/' + toISOLocal(endPlusOne);
+}
+
+// ---- API Layer ----
+
+var API_BASE = '/api/0';
+
+async function apiFetch(path) {
+  var resp = await fetch(API_BASE + path);
+  if (!resp.ok) throw new Error('API error: ' + resp.status + ' ' + resp.statusText);
+  return resp.json();
+}
+
+async function apiPost(path, body) {
+  var resp = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) throw new Error('API error: ' + resp.status + ' ' + resp.statusText);
+  return resp.json();
+}
+
+async function fetchBuckets() {
+  // Returns object keyed by bucket id
+  return apiFetch('/buckets/');
+}
+
+async function fetchSettings() {
+  return apiFetch('/settings');
+}
+
+async function runQuery(timeperiods, query) {
+  return apiPost('/query/', { query: query, timeperiods: timeperiods });
+}
+
+// ---- Bucket Helpers ----
+
+function discoverHosts(buckets) {
+  var hosts = {};
+  for (var bid in buckets) {
+    var b = buckets[bid];
+    var h = b.hostname || '';
+    if (h && h !== 'unknown') hosts[h] = true;
+  }
+  return Object.keys(hosts);
+}
+
+function findBucket(buckets, prefix, hostname) {
+  // Find bucket id matching prefix + hostname
+  var target = prefix + hostname;
+  for (var bid in buckets) {
+    if (bid === target) return bid;
+  }
+  // Fuzzy: startsWith prefix and contains hostname
+  for (var bid2 in buckets) {
+    if (bid2.indexOf(prefix) === 0 && bid2.indexOf(hostname) !== -1) return bid2;
+  }
+  return null;
+}
+
+// ---- Category / Score Logic ----
+
+function parseClasses(settingsClasses) {
+  // settingsClasses is an array of {name: string[], rule: {type, regex, ...}, data: {score, ...}}
+  if (!settingsClasses || !Array.isArray(settingsClasses)) return [];
+  return settingsClasses;
+}
+
+function classesForQuery(classes) {
+  // Returns array of [name, rule] tuples for AW categorize()
+  // Filter out categories with no rule type (type: null / type: "none" is kept for scoring but not querying)
+  return classes
+    .filter(function(c) { return c.rule && c.rule.type && c.rule.type !== 'none'; })
+    .map(function(c) { return [c.name, c.rule]; });
+}
+
+function getScoreFromCategory(categoryName, allClasses) {
+  // categoryName is an array of strings like ["Malachi", "Admin & Finance"]
+  // Walk the class list to find a match, then resolve score up parent chain
+  var cat = allClasses.find(function(c) { return arraysEqual(c.name, categoryName); });
+  return resolveScore(cat, allClasses);
+}
+
+function resolveScore(cat, allClasses) {
+  if (!cat) return 0;
+  if (cat.data && cat.data.score !== undefined && cat.data.score !== null) {
+    return cat.data.score;
+  }
+  // Walk up parent chain
+  if (cat.name && cat.name.length > 1) {
+    var parentName = cat.name.slice(0, -1);
+    var parentCat = allClasses.find(function(c) { return arraysEqual(c.name, parentName); });
+    return resolveScore(parentCat, allClasses);
+  }
+  return 0;
+}
+
+function arraysEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+// ---- Query Builder ----
+
+function buildCategoryQuery(bidWindow, bidAfk, categoriesJson) {
+  // Ports canonicalEvents + categoryQuery from queries.ts
+  return [
+    'events = flood(query_bucket("' + bidWindow + '"));',
+    'not_afk = flood(query_bucket("' + bidAfk + '"));',
+    'not_afk = filter_keyvals(not_afk, "status", ["not-afk"]);',
+    'events = filter_period_intersect(events, not_afk);',
+    'events = categorize(events, ' + categoriesJson + ');',
+    'cat_events = sort_by_duration(merge_events_by_keys(events, ["$category"]));',
+    'RETURN = { "cat_events": cat_events };'
+  ];
+}
+
+// ---- Main Fetch ----
+
+async function fetchLeaderboard() {
+  state.loading = true;
+  state.error = null;
+  state.entries = [];
+  state.ranked = [];
+  renderStatus();
+
+  try {
+    // 1. Fetch buckets and settings in parallel
+    var results = await Promise.all([fetchBuckets(), fetchSettings()]);
+    var buckets = results[0];
+    var settings = results[1];
+
+    // 2. Parse categories from settings
+    var allClasses = parseClasses(settings.classes);
+    var queryClasses = classesForQuery(allClasses);
+
+    // Build the categories JSON string for AW query
+    // Needs same escaping as queries.ts: JSON.stringify then replace \\\\ with \\
+    var categoriesJson = JSON.stringify(queryClasses).replace(/\\\\/g, '\\');
+
+    // 3. Discover hosts
+    var hosts = discoverHosts(buckets);
+    if (hosts.length === 0) {
+      state.error = 'No employee hosts found.';
+      state.loading = false;
+      renderAll();
+      return;
+    }
+
+    // 4. Compute date range
+    var range = getMonthRange(state.selectedYear, state.selectedMonth);
+    var monthStart = range[0];
+    var monthEnd = range[1];
+    var workingDays = getWorkingDaysInRange(monthStart, monthEnd);
+
+    // Total working days in the full month (for "X of Y working days")
+    var fullMonthEnd = new Date(state.selectedYear, state.selectedMonth, 0);
+    var totalWorkingDaysInMonth = getWorkingDaysInRange(monthStart, fullMonthEnd);
+
+    var now = new Date();
+    state.isCurrentMonth =
+      state.selectedYear === now.getFullYear() &&
+      state.selectedMonth === (now.getMonth() + 1);
+    state.workingDays = workingDays;
+    state.totalWorkingDaysInMonth = totalWorkingDaysInMonth;
+
+    var timeperiodStr = makeTimeperiod(monthStart, monthEnd);
+
+    // 5. Query each host in parallel
+    var promises = hosts.map(async function(hostname) {
+      try {
+        var bidWindow = findBucket(buckets, 'aw-watcher-window_', hostname);
+        var bidAfk = findBucket(buckets, 'aw-watcher-afk_', hostname);
+        if (!bidWindow || !bidAfk) return null;
+
+        var query = buildCategoryQuery(bidWindow, bidAfk, categoriesJson);
+        var result = await runQuery([timeperiodStr], query);
+
+        if (!result || !result[0] || !result[0].cat_events) return null;
+
+        var catEvents = result[0].cat_events;
+        var totalProductiveSeconds = 0;
+        var totalTrackedSeconds = 0;
+
+        for (var i = 0; i < catEvents.length; i++) {
+          var ev = catEvents[i];
+          var catName = (ev.data && ev.data.$category) || ['Uncategorized'];
+          var score = getScoreFromCategory(catName, allClasses);
+          totalTrackedSeconds += ev.duration;
+          if (score > 0) {
+            totalProductiveSeconds += ev.duration;
+          }
+        }
+
+        var avgProductiveSecondsPerDay = workingDays > 0
+          ? totalProductiveSeconds / workingDays : 0;
+
+        return {
+          hostname: hostname,
+          totalProductiveSeconds: totalProductiveSeconds,
+          totalTrackedSeconds: totalTrackedSeconds,
+          workingDays: workingDays,
+          avgProductiveSecondsPerDay: avgProductiveSecondsPerDay
+        };
+      } catch (err) {
+        console.warn('[Leaderboard] Failed for ' + hostname + ':', err);
+        return null;
+      }
+    });
+
+    var hostResults = await Promise.all(promises);
+
+    // 6. Filter and sort
+    state.entries = hostResults.filter(function(e) {
+      return e !== null && e.totalProductiveSeconds > 0;
+    });
+    state.ranked = state.entries.slice().sort(function(a, b) {
+      return b.totalProductiveSeconds - a.totalProductiveSeconds;
+    });
+
+  } catch (err) {
+    console.error('[Leaderboard] Fatal error:', err);
+    state.error = 'Failed to load leaderboard data: ' + err.message;
+  } finally {
+    state.loading = false;
+    renderAll();
+  }
+}
+
+// ---- Month Navigation ----
+
+function prevMonth() {
+  var m = state.selectedMonth - 1;
+  var y = state.selectedYear;
+  if (m < 1) { m = 12; y--; }
+  state.selectedYear = y;
+  state.selectedMonth = m;
+  fetchLeaderboard();
+}
+
+function nextMonth() {
+  var now = new Date();
+  var curY = now.getFullYear();
+  var curM = now.getMonth() + 1;
+  var m = state.selectedMonth + 1;
+  var y = state.selectedYear;
+  if (m > 12) { m = 1; y++; }
+  // Don't go past current month
+  if (y > curY || (y === curY && m > curM)) return;
+  state.selectedYear = y;
+  state.selectedMonth = m;
+  fetchLeaderboard();
+}
+
+// ---- Rendering ----
+
+function renderAll() {
+  renderMonthLabel();
+  renderWorkingDays();
+  renderStatus();
+  renderPodium();
+  renderTable();
+  renderRefreshInfo();
+}
+
+function renderMonthLabel() {
+  var el = document.getElementById('month-label');
+  el.textContent = MONTHS[state.selectedMonth - 1] + ' ' + state.selectedYear;
+
+  // Disable next button if current month
+  var now = new Date();
+  var isCurrentMonth =
+    state.selectedYear === now.getFullYear() &&
+    state.selectedMonth === (now.getMonth() + 1);
+  document.getElementById('btn-next').disabled = isCurrentMonth;
+}
+
+function renderWorkingDays() {
+  var el = document.getElementById('working-days-label');
+  if (state.ranked.length === 0 && !state.loading) {
+    el.textContent = '';
+    return;
+  }
+  if (state.isCurrentMonth) {
+    el.textContent = '\uD83D\uDCC5 ' + state.workingDays + ' of ' +
+      state.totalWorkingDaysInMonth + ' working days elapsed';
+  } else {
+    el.textContent = '\uD83D\uDCC5 ' + state.workingDays + ' working days';
+  }
+}
+
+function renderStatus() {
+  var el = document.getElementById('status');
+  if (state.loading) {
+    el.innerHTML = '<div class="status-msg"><div class="spinner"></div><div>Loading leaderboard data for all employees...</div></div>';
+    document.getElementById('podium').innerHTML = '';
+    document.getElementById('table-wrap').innerHTML = '';
+    return;
+  }
+  if (state.error) {
+    el.innerHTML = '<div class="status-msg error">' + escapeHtml(state.error) + '</div>';
+    return;
+  }
+  if (state.ranked.length === 0) {
+    el.innerHTML = '<div class="status-msg">&#127942;<br>No productive activity data found for ' +
+      MONTHS[state.selectedMonth - 1] + ' ' + state.selectedYear +
+      '.<br><small>Make sure employees have categorized their activities with positive scores.</small></div>';
+    return;
+  }
+  el.innerHTML = '';
+}
+
+function renderPodium() {
+  var el = document.getElementById('podium');
+  if (state.ranked.length === 0) { el.innerHTML = ''; return; }
+
+  var html = '<div class="podium">';
+
+  // Silver (2nd) — order:1 in CSS
+  if (state.ranked.length >= 2) {
+    html += podiumCard(state.ranked[1], 2, 'silver');
+  }
+
+  // Gold (1st) — order:2 in CSS
+  if (state.ranked.length >= 1) {
+    html += podiumCard(state.ranked[0], 1, 'gold');
+  }
+
+  // Bronze (3rd) — order:3 in CSS
+  if (state.ranked.length >= 3) {
+    html += podiumCard(state.ranked[2], 3, 'bronze');
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function podiumCard(entry, rank, cls) {
+  var crown = (cls === 'gold') ? '<div class="crown">&#128081;</div>' : '';
+  var avgHrs = (entry.avgProductiveSecondsPerDay / 3600).toFixed(1);
+  return '<div class="podium-card ' + cls + '">' +
+    crown +
+    '<div class="rank-badge">' + rank + '</div>' +
+    '<div class="hostname">' + escapeHtml(entry.hostname) + '</div>' +
+    '<div class="productive-time">' + formatDuration(entry.totalProductiveSeconds) + '</div>' +
+    '<div class="avg-label" title="Average: ' + avgHrs + 'h/day over ' + entry.workingDays + ' working days">avg ' + formatDuration(entry.avgProductiveSecondsPerDay) + '/day</div>' +
+    '</div>';
+}
+
+function renderTable() {
+  var el = document.getElementById('table-wrap');
+  if (state.ranked.length === 0) { el.innerHTML = ''; return; }
+
+  var maxSec = state.ranked[0].totalProductiveSeconds || 1;
+
+  var html = '<table class="ranking-table">';
+  html += '<thead><tr>' +
+    '<th class="center" style="width:60px;">Rank</th>' +
+    '<th>Employee</th>' +
+    '<th>Total Productive Time</th>' +
+    '<th class="center">Avg / Day</th>' +
+    '<th style="width:40%;">Progress</th>' +
+    '</tr></thead><tbody>';
+
+  for (var i = 0; i < state.ranked.length; i++) {
+    var entry = state.ranked[i];
+    var rank = i + 1;
+    var rowCls = i === 0 ? 'row-gold' : i === 1 ? 'row-silver' : i === 2 ? 'row-bronze' : '';
+    var rankCls = i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : '';
+    var barCls = i === 0 ? 'bar-gold' : i === 1 ? 'bar-silver' : i === 2 ? 'bar-bronze' : '';
+    var icon = i < 3 ? '&#127942;' : '&#128187;';
+    var pct = ((entry.totalProductiveSeconds / maxSec) * 100).toFixed(0);
+    var totalHrs = (entry.totalProductiveSeconds / 3600).toFixed(1);
+    var avgHrs = (entry.avgProductiveSecondsPerDay / 3600).toFixed(1);
+    var tooltip = 'Total productive: ' + totalHrs + 'h | Working days: ' + entry.workingDays + ' | Average: ' + avgHrs + 'h/day';
+
+    html += '<tr class="' + rowCls + '">';
+    html += '<td class="center"><span class="rank-text ' + rankCls + '">' + rank + '</span></td>';
+    html += '<td><div class="employee-cell"><span class="icon ' + rankCls + '">' + icon + '</span><span class="name">' + escapeHtml(entry.hostname) + '</span></div></td>';
+    html += '<td>' + formatDuration(entry.totalProductiveSeconds) + '</td>';
+    html += '<td class="center avg-cell" title="' + tooltip + '">' + formatDuration(entry.avgProductiveSecondsPerDay) + '</td>';
+    html += '<td><div class="progress-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill ' + barCls + '" style="width:' + pct + '%;"></div></div><span class="progress-pct">' + pct + '%</span></div></td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function renderRefreshInfo() {
+  var el = document.getElementById('refresh-info');
+  var now = new Date();
+  var hh = now.getHours().toString().padStart(2, '0');
+  var mm = now.getMinutes().toString().padStart(2, '0');
+  el.textContent = 'Last updated: ' + hh + ':' + mm + ' \u2014 Auto-refreshes every 5 minutes';
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+// ---- Init ----
+(function init() {
+  renderMonthLabel();
+  fetchLeaderboard();
+
+  // Auto-refresh
+  setInterval(function() {
+    fetchLeaderboard();
+  }, REFRESH_INTERVAL);
+})();
+</script>
+</body>
+</html>
