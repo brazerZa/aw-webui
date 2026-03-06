@@ -535,8 +535,7 @@ function arraysEqual(a, b) {
 // ---- Query Builder ----
 
 function buildCategoryQuery(bidWindow, bidAfk, categoriesJson) {
-  // Ports canonicalEvents + categoryQueryWithDaily from queries.ts
-  // Returns both category totals and daily totals for leave-aware averaging
+  // Ports canonicalEvents + categoryQuery from queries.ts
   return [
     'events = flood(query_bucket("' + bidWindow + '"));',
     'not_afk = flood(query_bucket("' + bidAfk + '"));',
@@ -544,8 +543,18 @@ function buildCategoryQuery(bidWindow, bidAfk, categoriesJson) {
     'events = filter_period_intersect(events, not_afk);',
     'events = categorize(events, ' + categoriesJson + ');',
     'cat_events = sort_by_duration(merge_events_by_keys(events, ["$category"]));',
-    'daily_events = sort_by_duration(merge_events_by_keys(events, ["$date"]));',
-    'RETURN = { "cat_events": cat_events, "daily_events": daily_events };'
+    'RETURN = { "cat_events": cat_events };'
+  ];
+}
+
+function buildRawEventsQuery(bidWindow, bidAfk) {
+  // Returns raw events for daily grouping in JS
+  return [
+    'events = flood(query_bucket("' + bidWindow + '"));',
+    'not_afk = flood(query_bucket("' + bidAfk + '"));',
+    'not_afk = filter_keyvals(not_afk, "status", ["not-afk"]);',
+    'events = filter_period_intersect(events, not_afk);',
+    'RETURN = { "events": events };'
   ];
 }
 
@@ -617,7 +626,6 @@ async function fetchLeaderboard() {
         if (!result || !result[0] || !result[0].cat_events) return null;
 
         var catEvents = result[0].cat_events;
-        var dailyEvents = result[0].daily_events || [];
         var totalProductiveSeconds = 0;
         var totalTrackedSeconds = 0;
 
@@ -632,13 +640,24 @@ async function fetchLeaderboard() {
           }
         }
 
-        // Calculate actual working days based on daily events and threshold
+        // Fetch raw events to compute daily totals in JS
+        var rawQuery = buildRawEventsQuery(bidWindow, bidAfk);
+        var rawResult = await runQuery([timeperiodStr], rawQuery);
+        var rawEvents = (rawResult && rawResult[0] && rawResult[0].events) || [];
+        
+        // Group events by date and calculate daily totals
+        var eventsByDate = {};
+        for (var k = 0; k < rawEvents.length; k++) {
+          var rev = rawEvents[k];
+          var date = new Date(rev.timestamp).toISOString().split('T')[0]; // "2026-03-01"
+          if (!eventsByDate[date]) eventsByDate[date] = 0;
+          eventsByDate[date] += rev.duration;
+        }
+        
+        // Count days where total duration >= threshold
         var actualWorkingDays = 0;
-        for (var j = 0; j < dailyEvents.length; j++) {
-          var dayEv = dailyEvents[j];
-          var dayCatName = (dayEv.data && dayEv.data.$category) || ['Uncategorized'];
-          var dayScore = getScoreFromCategory(dayCatName, allClasses);
-          if (dayScore > 0 && dayEv.duration >= minDailySeconds) {
+        for (var date in eventsByDate) {
+          if (eventsByDate[date] >= minDailySeconds) {
             actualWorkingDays++;
           }
         }

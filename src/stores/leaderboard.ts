@@ -7,7 +7,7 @@ import { useBucketsStore } from '~/stores/buckets';
 import { useCategoryStore } from '~/stores/categories';
 import { useSettingsStore } from '~/stores/settings';
 import { getWorkingDaysInRange, getMonthRange } from '~/util/time';
-import { categoryQuery, categoryQueryWithDaily } from '~/queries';
+import { categoryQuery } from '~/queries';
 
 export interface LeaderboardEntry {
   hostname: string;
@@ -177,7 +177,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             const minDailyHours = settingsStore.leaderboard_min_daily_hours || 3;
             const minDailySeconds = minDailyHours * 3600;
 
-            const query = categoryQueryWithDaily({
+            const query = categoryQuery({
               bid_window: bid_window[0],
               bid_afk: bid_afk[0],
               filter_afk: true,
@@ -189,7 +189,6 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             const result = await getClient().query([timeperiodStr], query);
             console.log(`${DBG} [${hostname}] Raw result keys:`, result ? Object.keys(result[0] || {}) : 'null');
             console.log(`${DBG} [${hostname}] cat_events count:`, result?.[0]?.cat_events?.length ?? 'N/A');
-            console.log(`${DBG} [${hostname}] daily_events count:`, result?.[0]?.daily_events?.length ?? 'N/A');
 
             if (!result || !result[0] || !result[0].cat_events) {
               console.warn(`${DBG} [${hostname}] No cat_events in result, skipping. Result:`, result);
@@ -197,7 +196,6 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             }
 
             const catEvents = result[0].cat_events;
-            const dailyEvents = result[0].daily_events || [];
 
             // Calculate productive time: sum durations of categories with positive score
             let totalProductiveSeconds = 0;
@@ -222,16 +220,35 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               }
             }
 
-            // Calculate actual working days based on daily events and threshold
-            // Only count days where productive time > minDailySeconds as working days
+            // Calculate actual working days by fetching raw events and grouping by date in JS
+            // This is needed because $date doesn't exist in AW events
+            const rawQuery = [
+              `events = flood(query_bucket("${bid_window[0]}"));`,
+              `not_afk = flood(query_bucket("${bid_afk[0]}"));`,
+              `not_afk = filter_keyvals(not_afk, "status", ["not-afk"]);`,
+              `events = filter_period_intersect(events, not_afk);`,
+              `RETURN = { "events": events };`,
+            ];
+            const rawResult = await getClient().query([timeperiodStr], rawQuery);
+            const rawEvents = rawResult?.[0]?.events || [];
+            
+            // Group events by date and calculate daily totals
+            const eventsByDate: Record<string, number> = {};
+            for (const ev of rawEvents) {
+              const date = new Date(ev.timestamp).toISOString().split('T')[0]; // "2026-03-01"
+              if (!eventsByDate[date]) eventsByDate[date] = 0;
+              eventsByDate[date] += ev.duration;
+            }
+            
+            // Count days where total duration >= threshold
             let actualWorkingDays = 0;
-            for (const dayEvent of dailyEvents) {
-              const categoryName = dayEvent.data?.$category || ['Uncategorized'];
-              const score = categoryStore.get_category_score(categoryName);
-              if (score > 0 && dayEvent.duration >= minDailySeconds) {
+            for (const date in eventsByDate) {
+              if (eventsByDate[date] >= minDailySeconds) {
                 actualWorkingDays++;
               }
             }
+            console.log(`${DBG} [${hostname}] Daily totals:`, eventsByDate);
+            console.log(`${DBG} [${hostname}] Actual working days (>= ${minDailyHours}h):`, actualWorkingDays);
 
             console.log(`${DBG} [${hostname}] Totals:`, {
               totalProductiveSeconds,
