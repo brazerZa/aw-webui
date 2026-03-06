@@ -9,8 +9,7 @@ div
       v-model.number="minDailyHours",
       min="0",
       max="24",
-      step="0.5",
-      @change="updateMinDailyHours"
+      step="0.5"
     )
     small.text-muted
       | Days with less than this many productive hours won't count towards the average. Default: 3 hours.
@@ -56,7 +55,7 @@ export default {
         return this.settingsStore.leaderboard_min_daily_hours || 3;
       },
       set(val: number) {
-        // handled by @change
+        this.settingsStore.update({ leaderboard_min_daily_hours: val });
       },
     },
     excludedHosts(): string[] {
@@ -71,9 +70,6 @@ export default {
     await this.bucketsStore.ensureLoaded();
   },
   methods: {
-    updateMinDailyHours() {
-      this.settingsStore.update({ leaderboard_min_daily_hours: this.minDailyHours });
-    },
     isExcluded(hostname: string): boolean {
       return this.excludedHosts.includes(hostname);
     },
