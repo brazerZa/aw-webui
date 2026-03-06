@@ -95,8 +95,13 @@ div
       b-input-group.my-1(prepend="Name")
         b-form-input(v-model="new_view.name")
 
-  div
-    router-view
+  div.position-relative
+    div(v-if="loading" style="min-height: 200px;")
+      .d-flex.justify-content-center.align-items-center(style="min-height: 200px;")
+        div #[icon(name="spinner" pulse scale="2")] #[span.ml-2 Loading...]
+
+    div(v-show="!loading")
+      router-view
 
     aw-devonly
       b-btn(id="load-demo", @click="load_demo")
@@ -163,6 +168,7 @@ import 'vue-awesome/icons/times';
 import 'vue-awesome/icons/save';
 import 'vue-awesome/icons/question-circle';
 import 'vue-awesome/icons/filter';
+import 'vue-awesome/icons/spinner';
 
 import { useSettingsStore } from '~/stores/settings';
 import { useCategoryStore } from '~/stores/categories';
@@ -198,6 +204,7 @@ export default {
 
       today: null,
       showOptions: false,
+      loading: false,
 
       include_audible: true,
       include_stopwatch: false,
@@ -412,6 +419,7 @@ export default {
     },
 
     refresh: async function (force) {
+      this.loading = true;
       const queryOptions: QueryOptions = {
         timeperiod: this.timeperiod,
         host: this.host,
@@ -422,7 +430,11 @@ export default {
         filter_categories: this.filter_categories,
         always_active_pattern: this.always_active_pattern,
       };
-      await this.activityStore.ensure_loaded(queryOptions);
+      try {
+        await this.activityStore.ensure_loaded(queryOptions);
+      } finally {
+        this.loading = false;
+      }
     },
 
     load_demo: async function () {
