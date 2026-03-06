@@ -122,7 +122,6 @@ export default {
         // TODO: Use flooding instead, preferably with some additional method of removing/simplifying short events for even greater performance
         if (this.filterShortEvents) {
           events = _.filter(events, e => e.duration > 1);
-          console.log(`Filtered ${bucket.events.length - events.length} events`);
         }
         events.sort((a, b) => a.timestamp.valueOf() - b.timestamp.valueOf());
         _.each(events, e => {

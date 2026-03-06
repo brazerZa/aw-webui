@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { Category, matchString, loadClasses } from './classes';
+import { useSettingsStore } from '~/stores/settings';
 import Color from 'color';
 import * as d3 from 'd3';
 import { IEvent, IBucket } from './interfaces';
@@ -9,6 +10,24 @@ import { IEvent, IBucket } from './interfaces';
 //
 
 const COLOR_UNCAT = '#CCC';
+
+let cachedClasses: Category[] | null = null;
+let cachedSettingsLoaded: number | null = null;
+
+export function getCachedClasses(): Category[] {
+  const settingsStore = useSettingsStore();
+  const currentLoaded = settingsStore._loaded;
+  if (cachedClasses && cachedSettingsLoaded === currentLoaded) {
+    return cachedClasses;
+  }
+  cachedClasses = loadClasses();
+  cachedSettingsLoaded = currentLoaded;
+  return cachedClasses;
+}
+
+export function invalidateClassesCache(): void {
+  cachedClasses = null;
+}
 
 const scale = d3.scaleOrdinal(['#90CAF9', '#FFE082', '#EF9A9A', '#A5D6A7']);
 
@@ -87,8 +106,7 @@ export function getColorFromCategory(c: Category, allCats: Category[]): string {
 
 // TODO: Move into vuex?
 export function getCategoryColorFromString(str: string): string {
-  // TODO: Don't load classes on every call
-  const allCats = loadClasses();
+  const allCats = getCachedClasses();
   const c = matchString(str, allCats);
   if (c !== null) {
     return getColorFromCategory(c, allCats);

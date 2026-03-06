@@ -118,26 +118,26 @@ export default {
     },
   },
   watch: {
-    daterange() {
+    daterange: _.debounce(function() {
       this.updateTimelineWindow = true;
       this.getBuckets();
-    },
-    filter_hostname() {
+    }, 300),
+    filter_hostname: _.debounce(function() {
       this.updateTimelineWindow = false;
       this.getBuckets();
-    },
-    filter_client() {
+    }, 300),
+    filter_client: _.debounce(function() {
       this.updateTimelineWindow = false;
       this.getBuckets();
-    },
-    filter_duration() {
+    }, 300),
+    filter_duration: _.debounce(function() {
       this.updateTimelineWindow = false;
       this.getBuckets();
-    },
-    swimlane() {
+    }, 300),
+    swimlane: _.debounce(function() {
       this.updateTimelineWindow = false;
       this.getBuckets();
-    },
+    }, 300),
   },
   methods: {
     getBuckets: async function () {
