@@ -98,7 +98,7 @@ div
   div.position-relative
     div(v-if="loading" style="min-height: 200px;")
       .d-flex.justify-content-center.align-items-center(style="min-height: 200px;")
-        div #[icon(name="spinner" pulse scale="2")] #[span.ml-2 Loading...]
+        b-spinner.mr-2(label="Loading...") #[span.ml-1 Loading...]
 
     div(v-show="!loading")
       router-view
@@ -168,7 +168,6 @@ import 'vue-awesome/icons/times';
 import 'vue-awesome/icons/save';
 import 'vue-awesome/icons/question-circle';
 import 'vue-awesome/icons/filter';
-import 'vue-awesome/icons/spinner';
 
 import { useSettingsStore } from '~/stores/settings';
 import { useCategoryStore } from '~/stores/categories';
