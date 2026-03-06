@@ -16,21 +16,29 @@ div
       | Days with less than this many productive hours won't count towards the average. Default: 3 hours.
 
   div.mb-3
-    label Excluded hosts
-    b-form-input(
-      v-model="excludedHostsText",
-      @change="updateExcludedHosts",
-      placeholder="e.g. Hendrik_BBD, Louis-Laptop"
-    )
-    small.text-muted
-      | Comma-separated list of hostnames to exclude from the leaderboard.
+    label Excluded hosts - click to toggle
+    div.mt-2
+      span.badge.m-1(
+        v-for="h in sortedHostnames",
+        :key="h",
+        :class="isExcluded(h) ? 'badge-danger' : 'badge-success'",
+        @click="toggleExclude(h)",
+        style="cursor: pointer; font-size: 0.9rem; padding: 0.5em;"
+      ) 
+        icon(:name="isExcluded(h) ? 'times' : 'check'" size="1")
+        | {{ h }}
+    small.text-muted.d-block.mt-2
+      | Red = excluded from leaderboard, Green = included. Click to toggle.
 
-  div(v-if="hostnames.length > 0")
-    small.text-muted Available hosts: 
-    span.badge.badge-secondary.mr-1(v-for="h in hostnames") {{ h }}
+  div(v-if="excludedHosts.length > 0").mt-2
+    small.text-muted Currently excluded: 
+    span.text-danger {{ excludedHosts.join(', ') }}
 </template>
 
 <script lang="ts">
+import 'vue-awesome/icons/check';
+import 'vue-awesome/icons/times';
+
 import { useSettingsStore } from '~/stores/settings';
 import { useBucketsStore } from '~/stores/buckets';
 
@@ -51,17 +59,12 @@ export default {
         // handled by @change
       },
     },
-    excludedHostsText: {
-      get(): string {
-        const arr = this.settingsStore.leaderboard_excluded_hosts || [];
-        return arr.join(', ');
-      },
-      set(val: string) {
-        // handled by @change
-      },
+    excludedHosts(): string[] {
+      return this.settingsStore.leaderboard_excluded_hosts || [];
     },
-    hostnames() {
-      return this.bucketsStore.hosts || [];
+    sortedHostnames(): string[] {
+      const hosts = this.bucketsStore.hosts || [];
+      return hosts.filter(h => h && h !== 'unknown').sort();
     },
   },
   async mounted() {
@@ -71,12 +74,18 @@ export default {
     updateMinDailyHours() {
       this.settingsStore.update({ leaderboard_min_daily_hours: this.minDailyHours });
     },
-    updateExcludedHosts() {
-      const hosts = this.excludedHostsText
-        .split(',')
-        .map((h: string) => h.trim())
-        .filter((h: string) => h.length > 0);
-      this.settingsStore.update({ leaderboard_excluded_hosts: hosts });
+    isExcluded(hostname: string): boolean {
+      return this.excludedHosts.includes(hostname);
+    },
+    toggleExclude(hostname: string) {
+      let newExcluded = [...this.excludedHosts];
+      const idx = newExcluded.indexOf(hostname);
+      if (idx >= 0) {
+        newExcluded.splice(idx, 1);
+      } else {
+        newExcluded.push(hostname);
+      }
+      this.settingsStore.update({ leaderboard_excluded_hosts: newExcluded });
     },
   },
 };
