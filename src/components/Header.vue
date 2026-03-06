@@ -11,6 +11,11 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
 
     b-collapse#nav-collapse(is-nav)
       b-navbar-nav
+        b-nav-item(to="/leaderboard")
+          div.px-2.px-lg-1
+            icon(name="trophy")
+            | Leaderboard
+
         // If only a single view (the default) is available
         b-nav-item(v-if="activityViews && activityViews.length === 1", v-for="view in activityViews", :key="view.name", :to="view.pathUrl")
           div.px-2.px-lg-1
@@ -43,11 +48,6 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
           div.px-2.px-lg-1
             icon(name="stopwatch")
             | Stopwatch
-
-        b-nav-item(to="/leaderboard")
-          div.px-2.px-lg-1
-            icon(name="trophy")
-            | Leaderboard
 
       // Brand on large screens (centered)
       b-navbar-nav.abs-center.d-none.d-lg-block

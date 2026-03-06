@@ -6,6 +6,7 @@ div
     div
       b-select.landingpage(v-if="loaded" size="sm" :value="landingpage", @change="landingpage = $event")
         option(value="/home") Home
+        option(value="/leaderboard") Leaderboard
         option(:value="'/activity/' + hostname + '/view/'" v-for="hostname in hostnames") Activity ({{hostname}})
         option(value="/timeline") Timeline
       span(v-else)

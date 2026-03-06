@@ -225,6 +225,42 @@ div
 .progress-bronze ::v-deep .progress-bar {
   background-color: #cd7f32;
 }
+
+// Dark mode fixes
+body.dark-mode {
+  .silver {
+    .productive-time {
+      color: #e0e0e0;
+    }
+  }
+  
+  .rank-silver {
+    color: #e0e0e0;
+  }
+  
+  .row-silver {
+    background-color: rgba(224, 224, 224, 0.1);
+  }
+  
+  .row-gold {
+    background-color: rgba(255, 215, 0, 0.1);
+  }
+  
+  .row-bronze {
+    background-color: rgba(205, 127, 50, 0.1);
+  }
+  
+  // Ensure text is readable on hover
+  tr:hover {
+    color: #fff !important;
+  }
+  
+  .hostname,
+  .rank-text,
+  .table td {
+    color: #fff !important;
+  }
+}
 </style>
 
 <script lang="ts">

@@ -305,6 +305,68 @@ body {
   font-size: 0.8em;
   margin-top: 16px;
 }
+
+/* ===== Dark mode fixes ===== */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+  }
+  
+  .navbar {
+    background: #16213e;
+  }
+  
+  .podium-card.silver .productive-time {
+    color: #e0e0e0;
+  }
+  
+  .rank-text.rank-silver {
+    color: #e0e0e0;
+  }
+  
+  .employee-cell .icon.rank-silver {
+    color: #e0e0e0;
+  }
+  
+  .ranking-table tr.row-gold {
+    background: rgba(255, 215, 0, 0.1);
+  }
+  
+  .ranking-table tr.row-silver {
+    background: rgba(224, 224, 224, 0.1);
+  }
+  
+  .ranking-table tr.row-bronze {
+    background: rgba(205, 127, 50, 0.1);
+  }
+  
+  .ranking-table th {
+    background: #16213e;
+    color: #e0e0e0;
+  }
+  
+  .ranking-table td {
+    color: #e0e0e0;
+    border-bottom-color: #333;
+  }
+  
+  .ranking-table tr:hover {
+    background: #16213e;
+  }
+  
+  .ranking-table tr:hover td {
+    color: #fff;
+  }
+  
+  .hostname, .name {
+    color: #e0e0e0;
+  }
+  
+  .progress-bar-bg {
+    background: #333;
+  }
+}
 </style>
 </head>
 <body>

@@ -4,6 +4,10 @@ div
 
   hr
 
+  LeaderboardSettings
+
+  hr
+
   DaystartSettings
 
   hr
@@ -44,6 +48,7 @@ import { useSettingsStore } from '~/stores/settings';
 import { useCategoryStore } from '~/stores/categories';
 
 import DaystartSettings from '~/views/settings/DaystartSettings.vue';
+import LeaderboardSettings from '~/views/settings/LeaderboardSettings.vue';
 import TimelineDurationSettings from '~/views/settings/TimelineDurationSettings.vue';
 import ReleaseNotificationSettings from '~/views/settings/ReleaseNotificationSettings.vue';
 import CategorizationSettings from '~/views/settings/CategorizationSettings.vue';
@@ -57,6 +62,7 @@ export default {
   name: 'Settings',
   components: {
     DaystartSettings,
+    LeaderboardSettings,
     TimelineDurationSettings,
     ReleaseNotificationSettings,
     CategorizationSettings,

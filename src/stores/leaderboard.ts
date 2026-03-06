@@ -135,8 +135,9 @@ export const useLeaderboardStore = defineStore('leaderboard', {
           })),
         });
 
-        const hosts = bucketsStore.hosts.filter(h => h && h !== 'unknown');
-        console.log(`${DBG} Filtered hosts (excluding unknown):`, hosts);
+        const excludedHosts = settingsStore.leaderboard_excluded_hosts || [];
+        const hosts = bucketsStore.hosts.filter(h => h && h !== 'unknown' && !excludedHosts.includes(h));
+        console.log(`${DBG} Filtered hosts (excluding unknown and excluded: ${excludedHosts.join(', ')}):`, hosts);
 
         if (hosts.length === 0) {
           console.warn(`${DBG} No hosts found! Leaderboard will be empty.`);
