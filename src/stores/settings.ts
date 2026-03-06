@@ -45,6 +45,9 @@ interface State {
   useMultidevice: boolean;
   requestTimeout: number;
 
+  // Leaderboard settings
+  leaderboard_min_daily_hours: number;
+
   // Set to true if settings loaded
   _loaded: boolean;
 }
@@ -83,6 +86,9 @@ export const useSettingsStore = defineStore('settings', {
     showYearly: false,
     useMultidevice: false,
     requestTimeout: 30,
+
+    // Leaderboard settings (default: 3 hours minimum per day to count as working)
+    leaderboard_min_daily_hours: 3,
 
     _loaded: false,
   }),

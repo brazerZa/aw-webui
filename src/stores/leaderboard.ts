@@ -7,13 +7,14 @@ import { useBucketsStore } from '~/stores/buckets';
 import { useCategoryStore } from '~/stores/categories';
 import { useSettingsStore } from '~/stores/settings';
 import { getWorkingDaysInRange, getMonthRange } from '~/util/time';
-import { categoryQuery } from '~/queries';
+import { categoryQuery, categoryQueryWithDaily } from '~/queries';
 
 export interface LeaderboardEntry {
   hostname: string;
   totalProductiveSeconds: number;
   totalTrackedSeconds: number;
   workingDays: number;
+  actualWorkingDays: number;  // Days with > threshold productive time
   avgProductiveSecondsPerDay: number;
 }
 
@@ -172,7 +173,11 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             const categories = categoryStore.classes_for_query;
             console.log(`${DBG} [${hostname}] Categories for query: ${categories.length} rules`);
 
-            const query = categoryQuery({
+            // Get the leave threshold from settings (default 3 hours)
+            const minDailyHours = settingsStore.leaderboard_min_daily_hours || 3;
+            const minDailySeconds = minDailyHours * 3600;
+
+            const query = categoryQueryWithDaily({
               bid_window: bid_window[0],
               bid_afk: bid_afk[0],
               filter_afk: true,
@@ -184,6 +189,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             const result = await getClient().query([timeperiodStr], query);
             console.log(`${DBG} [${hostname}] Raw result keys:`, result ? Object.keys(result[0] || {}) : 'null');
             console.log(`${DBG} [${hostname}] cat_events count:`, result?.[0]?.cat_events?.length ?? 'N/A');
+            console.log(`${DBG} [${hostname}] daily_events count:`, result?.[0]?.daily_events?.length ?? 'N/A');
 
             if (!result || !result[0] || !result[0].cat_events) {
               console.warn(`${DBG} [${hostname}] No cat_events in result, skipping. Result:`, result);
@@ -191,6 +197,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             }
 
             const catEvents = result[0].cat_events;
+            const dailyEvents = result[0].daily_events || [];
 
             // Calculate productive time: sum durations of categories with positive score
             let totalProductiveSeconds = 0;
@@ -205,6 +212,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               console.log(`${DBG}   cat=${JSON.stringify(categoryName)} score=${score} duration=${event.duration}s`);
             }
 
+            // Calculate total tracked and productive from categories
             for (const event of catEvents) {
               const categoryName = event.data?.$category || ['Uncategorized'];
               const score = categoryStore.get_category_score(categoryName);
@@ -214,21 +222,38 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               }
             }
 
+            // Calculate actual working days based on daily events and threshold
+            // Only count days where productive time > minDailySeconds as working days
+            let actualWorkingDays = 0;
+            for (const dayEvent of dailyEvents) {
+              const categoryName = dayEvent.data?.$category || ['Uncategorized'];
+              const score = categoryStore.get_category_score(categoryName);
+              if (score > 0 && dayEvent.duration >= minDailySeconds) {
+                actualWorkingDays++;
+              }
+            }
+
             console.log(`${DBG} [${hostname}] Totals:`, {
               totalProductiveSeconds,
               totalTrackedSeconds,
               productiveHours: (totalProductiveSeconds / 3600).toFixed(1),
               trackedHours: (totalTrackedSeconds / 3600).toFixed(1),
+              actualWorkingDays,
+              minDailySeconds,
             });
 
+            // Use actualWorkingDays for average (if > 0), otherwise fall back to workingDays
+            // This ensures employees on leave aren't penalized
+            const daysForAverage = actualWorkingDays > 0 ? actualWorkingDays : workingDays;
             const avgProductiveSecondsPerDay =
-              workingDays > 0 ? totalProductiveSeconds / workingDays : 0;
+              daysForAverage > 0 ? totalProductiveSeconds / daysForAverage : 0;
 
             return {
               hostname,
               totalProductiveSeconds,
               totalTrackedSeconds,
               workingDays,
+              actualWorkingDays,
               avgProductiveSecondsPerDay,
             };
           } catch (err) {
@@ -240,10 +265,12 @@ export const useLeaderboardStore = defineStore('leaderboard', {
         const results = await Promise.all(promises);
         console.log(`${DBG} All host results:`, results);
 
+        // Filter: exclude entries with no productive time OR zero actual working days (below threshold every day)
         this.entries = results.filter(
-          (entry): entry is LeaderboardEntry => entry !== null && entry.totalProductiveSeconds > 0
+          (entry): entry is LeaderboardEntry =>
+            entry !== null && entry.totalProductiveSeconds > 0 && entry.actualWorkingDays > 0
         );
-        console.log(`${DBG} Final entries (productive > 0):`, this.entries);
+        console.log(`${DBG} Final entries (productive > 0 and actualWorkingDays > 0):`, this.entries);
       } catch (err) {
         console.error(`${DBG} FATAL ERROR:`, err);
         this.error = 'Failed to load leaderboard data. Please try again.';

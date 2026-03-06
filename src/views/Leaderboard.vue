@@ -46,7 +46,7 @@ div
                 v-b-tooltip.hover.html
                 :title="avgTooltip(ranked[1])"
               )
-                small.text-muted avg {{ formatDuration(ranked[1].avgProductiveSecondsPerDay) }}/day
+                small.text-muted avg {{ formatDuration(ranked[1].avgProductiveSecondsPerDay) }}/day ({{ ranked[1].actualWorkingDays }} days)
 
           .col-md-3.text-center.mb-3(v-if="ranked.length >= 1")
             .podium-card.gold.p-3
@@ -59,7 +59,7 @@ div
                 v-b-tooltip.hover.html
                 :title="avgTooltip(ranked[0])"
               )
-                small.text-muted avg {{ formatDuration(ranked[0].avgProductiveSecondsPerDay) }}/day
+                small.text-muted avg {{ formatDuration(ranked[0].avgProductiveSecondsPerDay) }}/day ({{ ranked[0].actualWorkingDays }} days)
 
           .col-md-3.text-center.mb-3(v-if="ranked.length >= 3")
             .podium-card.bronze.p-3
@@ -70,7 +70,7 @@ div
                 v-b-tooltip.hover.html
                 :title="avgTooltip(ranked[2])"
               )
-                small.text-muted avg {{ formatDuration(ranked[2].avgProductiveSecondsPerDay) }}/day
+                small.text-muted avg {{ formatDuration(ranked[2].avgProductiveSecondsPerDay) }}/day ({{ ranked[2].actualWorkingDays }} days)
 
       //- Full table
       .table-responsive
@@ -95,7 +95,7 @@ div
                 v-b-tooltip.hover.html
                 :title="avgTooltip(entry)"
               )
-                | {{ formatDuration(entry.avgProductiveSecondsPerDay) }}
+                | {{ formatDuration(entry.avgProductiveSecondsPerDay) }}/day ({{ entry.actualWorkingDays }} days)
               td
                 .d-flex.align-items-center
                   b-progress.flex-grow-1(:max="maxProductive" style="height: 20px;")

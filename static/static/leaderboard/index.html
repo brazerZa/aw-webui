@@ -535,7 +535,8 @@ function arraysEqual(a, b) {
 // ---- Query Builder ----
 
 function buildCategoryQuery(bidWindow, bidAfk, categoriesJson) {
-  // Ports canonicalEvents + categoryQuery from queries.ts
+  // Ports canonicalEvents + categoryQueryWithDaily from queries.ts
+  // Returns both category totals and daily totals for leave-aware averaging
   return [
     'events = flood(query_bucket("' + bidWindow + '"));',
     'not_afk = flood(query_bucket("' + bidAfk + '"));',
@@ -543,7 +544,8 @@ function buildCategoryQuery(bidWindow, bidAfk, categoriesJson) {
     'events = filter_period_intersect(events, not_afk);',
     'events = categorize(events, ' + categoriesJson + ');',
     'cat_events = sort_by_duration(merge_events_by_keys(events, ["$category"]));',
-    'RETURN = { "cat_events": cat_events };'
+    'daily_events = sort_by_duration(merge_events_by_keys(events, ["$date"]));',
+    'RETURN = { "cat_events": cat_events, "daily_events": daily_events };'
   ];
 }
 
@@ -585,6 +587,10 @@ async function fetchLeaderboard() {
     var monthEnd = range[1];
     var workingDays = getWorkingDaysInRange(monthStart, monthEnd);
 
+    // Get the leave threshold from settings (default 3 hours)
+    var minDailyHours = (settings && settings.leaderboard_min_daily_hours) || 3;
+    var minDailySeconds = minDailyHours * 3600;
+
     // Total working days in the full month (for "X of Y working days")
     var fullMonthEnd = new Date(state.selectedYear, state.selectedMonth, 0);
     var totalWorkingDaysInMonth = getWorkingDaysInRange(monthStart, fullMonthEnd);
@@ -611,9 +617,11 @@ async function fetchLeaderboard() {
         if (!result || !result[0] || !result[0].cat_events) return null;
 
         var catEvents = result[0].cat_events;
+        var dailyEvents = result[0].daily_events || [];
         var totalProductiveSeconds = 0;
         var totalTrackedSeconds = 0;
 
+        // Calculate totals from categories
         for (var i = 0; i < catEvents.length; i++) {
           var ev = catEvents[i];
           var catName = (ev.data && ev.data.$category) || ['Uncategorized'];
@@ -624,14 +632,28 @@ async function fetchLeaderboard() {
           }
         }
 
-        var avgProductiveSecondsPerDay = workingDays > 0
-          ? totalProductiveSeconds / workingDays : 0;
+        // Calculate actual working days based on daily events and threshold
+        var actualWorkingDays = 0;
+        for (var j = 0; j < dailyEvents.length; j++) {
+          var dayEv = dailyEvents[j];
+          var dayCatName = (dayEv.data && dayEv.data.$category) || ['Uncategorized'];
+          var dayScore = getScoreFromCategory(dayCatName, allClasses);
+          if (dayScore > 0 && dayEv.duration >= minDailySeconds) {
+            actualWorkingDays++;
+          }
+        }
+
+        // Use actualWorkingDays for average (if > 0), otherwise fall back to workingDays
+        var daysForAverage = actualWorkingDays > 0 ? actualWorkingDays : workingDays;
+        var avgProductiveSecondsPerDay = daysForAverage > 0
+          ? totalProductiveSeconds / daysForAverage : 0;
 
         return {
           hostname: hostname,
           totalProductiveSeconds: totalProductiveSeconds,
           totalTrackedSeconds: totalTrackedSeconds,
           workingDays: workingDays,
+          actualWorkingDays: actualWorkingDays,
           avgProductiveSecondsPerDay: avgProductiveSecondsPerDay
         };
       } catch (err) {
@@ -642,9 +664,9 @@ async function fetchLeaderboard() {
 
     var hostResults = await Promise.all(promises);
 
-    // 6. Filter and sort
+    // 6. Filter and sort - exclude entries with no productive time or zero actual working days
     state.entries = hostResults.filter(function(e) {
-      return e !== null && e.totalProductiveSeconds > 0;
+      return e !== null && e.totalProductiveSeconds > 0 && e.actualWorkingDays > 0;
     });
     state.ranked = state.entries.slice().sort(function(a, b) {
       return b.totalProductiveSeconds - a.totalProductiveSeconds;
@@ -775,7 +797,7 @@ function podiumCard(entry, rank, cls) {
     '<div class="rank-badge">' + rank + '</div>' +
     '<div class="hostname">' + escapeHtml(entry.hostname) + '</div>' +
     '<div class="productive-time">' + formatDuration(entry.totalProductiveSeconds) + '</div>' +
-    '<div class="avg-label" title="Average: ' + avgHrs + 'h/day over ' + entry.workingDays + ' working days">avg ' + formatDuration(entry.avgProductiveSecondsPerDay) + '/day</div>' +
+    '<div class="avg-label" title="Average: ' + avgHrs + 'h/day over ' + entry.actualWorkingDays + ' days">avg ' + formatDuration(entry.avgProductiveSecondsPerDay) + '/day (' + entry.actualWorkingDays + ' days)</div>' +
     '</div>';
 }
 
@@ -804,13 +826,13 @@ function renderTable() {
     var pct = ((entry.totalProductiveSeconds / maxSec) * 100).toFixed(0);
     var totalHrs = (entry.totalProductiveSeconds / 3600).toFixed(1);
     var avgHrs = (entry.avgProductiveSecondsPerDay / 3600).toFixed(1);
-    var tooltip = 'Total productive: ' + totalHrs + 'h | Working days: ' + entry.workingDays + ' | Average: ' + avgHrs + 'h/day';
+    var tooltip = 'Total productive: ' + totalHrs + 'h | Days worked: ' + entry.actualWorkingDays + ' | Average: ' + avgHrs + 'h/day';
 
     html += '<tr class="' + rowCls + '">';
     html += '<td class="center"><span class="rank-text ' + rankCls + '">' + rank + '</span></td>';
     html += '<td><div class="employee-cell"><span class="icon ' + rankCls + '">' + icon + '</span><span class="name">' + escapeHtml(entry.hostname) + '</span></div></td>';
     html += '<td>' + formatDuration(entry.totalProductiveSeconds) + '</td>';
-    html += '<td class="center avg-cell" title="' + tooltip + '">' + formatDuration(entry.avgProductiveSecondsPerDay) + '</td>';
+    html += '<td class="center avg-cell" title="' + tooltip + '">' + formatDuration(entry.avgProductiveSecondsPerDay) + '/day (' + entry.actualWorkingDays + ' days)</td>';
     html += '<td><div class="progress-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill ' + barCls + '" style="width:' + pct + '%;"></div></div><span class="progress-pct">' + pct + '%</span></div></td>';
     html += '</tr>';
   }
