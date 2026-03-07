@@ -2,7 +2,7 @@
 div
   .aw-container.p-4.mt-4
     .d-flex.align-items-center.justify-content-between.mb-4
-      h3.mb-0
+      h3.mb-0(style="color: #d16820")
         icon.mr-2(name="trophy")
         | Productivity Leaderboard
 
@@ -104,6 +104,73 @@ div
                       :class="progressClass(index)"
                     )
                   small.ml-2.text-muted {{ progressPercent(entry) }}%
+
+    //- Excluded employees section
+    div.mt-4(v-if="leaderboardStore.excluded && leaderboardStore.excluded.length > 0")
+      h6.mb-3.text-muted
+        icon.mr-2(name="eye-off")
+        | Below Participation Threshold
+      .table-responsive
+        table.table.table-sm.table-hover
+          thead
+            tr
+              th Employee
+              th Total Time
+              th Days Worked
+              th Available Days
+              th Reason
+          tbody
+            tr(v-for="entry in leaderboardStore.excluded" :key="entry.hostname")
+              td
+                icon.mr-2(name="desktop" class="text-muted")
+                span.text-muted {{ entry.hostname }}
+              td.text-muted {{ formatDuration(entry.totalProductiveSeconds) }}
+              td.text-center.text-muted {{ entry.actualWorkingDays }}
+              td.text-center.text-muted {{ entry.workingDays }}
+              td.text-muted
+                | Only {{ entry.actualWorkingDays }} days worked, needed {{ entry.availableDays }} days ({{ leaderboardStore.minParticipation }}% of {{ entry.workingDays }})
+
+    //- Calculations panel
+    div.mt-4
+      b-btn(variant="outline-secondary" size="sm" v-b-toggle.calculations-collapse)
+        icon.mr-2(name="calculator")
+        | View Calculations
+      b-collapse#calculations-collapse.mt-2
+        div.card
+          div.card-body
+            h6.mb-3 Calculation Breakdown
+            div(v-if="ranked.length > 0")
+              div.table-responsive
+                table.table.table-sm
+                  thead
+                    tr
+                      th Employee
+                      th Total Hours
+                      th Days Worked
+                      th Available
+                      th Score
+                      th Formula
+                  tbody
+                    tr(v-for="entry in ranked" :key="entry.hostname")
+                      td.font-weight-bold {{ entry.hostname }}
+                      td {{ formatDuration(entry.totalProductiveSeconds) }}
+                      td.text-center {{ entry.actualWorkingDays }}
+                      td.text-center {{ entry.workingDays }}
+                      td
+                        strong.text-success {{ entry.score.toFixed(2) }}
+                      td.text-muted.small {{ calculateFormula(entry) }}
+            div.text-muted.small.mt-2
+              strong Scoring Method: 
+              | {{ leaderboardStore.scoreMethodLabel }}
+              br
+              strong Standard Daily Hours: 
+              | {{ leaderboardStore.standardDailyHours }}h
+              br
+              strong Min Participation: 
+              | {{ leaderboardStore.minParticipation }}%
+              br
+              strong Consistency: 
+              | {{ leaderboardStore.displayConsistency(ranked[0]) }}
 </template>
 
 <style lang="scss" scoped>
@@ -270,6 +337,8 @@ import 'vue-awesome/icons/chevron-left';
 import 'vue-awesome/icons/chevron-right';
 import 'vue-awesome/icons/calendar-day';
 import 'vue-awesome/icons/desktop';
+import 'vue-awesome/icons/eye-off';
+import 'vue-awesome/icons/calculator';
 
 import moment from 'moment';
 import { seconds_to_duration, getWorkingDaysInRange, getMonthRange } from '~/util/time';
@@ -382,6 +451,33 @@ export default {
     progressPercent(entry: LeaderboardEntry): string {
       if (this.maxProductive === 0) return '0';
       return ((entry.totalProductiveSeconds / this.maxProductive) * 100).toFixed(0);
+    },
+
+    calculateFormula(entry: LeaderboardEntry): string {
+      const store = this.leaderboardStore;
+      const method = store.scoreMethodLabel;
+      const stdHours = store.standardDailyHours;
+      const days = entry.actualWorkingDays;
+      const available = entry.workingDays;
+      const totalHrs = (entry.totalProductiveSeconds / 3600).toFixed(1);
+      
+      if (method.includes('Total Hours')) {
+        return `${totalHrs}h total`;
+      }
+      if (method.includes('Average')) {
+        return `${totalHrs}h / ${days} days = ${(entry.totalProductiveSeconds / days / 3600).toFixed(2)}h/day`;
+      }
+      if (method.includes('Utilization')) {
+        const expected = (available * stdHours).toFixed(0);
+        const actual = totalHrs;
+        return `${actual}h / ${expected}h expected = ${entry.score.toFixed(2)}`;
+      }
+      if (method.includes('Hybrid')) {
+        const util = (entry.totalProductiveSeconds / 3600) / (available * stdHours);
+        const avg = (entry.totalProductiveSeconds / 3600) / days;
+        return `util:${util.toFixed(2)} + avg:${avg.toFixed(2)}`;
+      }
+      return '';
     },
   },
 };

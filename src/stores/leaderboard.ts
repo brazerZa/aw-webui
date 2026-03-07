@@ -24,6 +24,7 @@ export interface LeaderboardEntry {
 
 interface State {
   entries: LeaderboardEntry[];
+  excluded: LeaderboardEntry[];  // Have data but don't meet participation threshold
   loading: boolean;
   error: string | null;
   selectedYear: number;
@@ -33,6 +34,7 @@ interface State {
 export const useLeaderboardStore = defineStore('leaderboard', {
   state: (): State => ({
     entries: [],
+    excluded: [],
     loading: false,
     error: null,
     selectedYear: moment().year(),
@@ -63,10 +65,37 @@ export const useLeaderboardStore = defineStore('leaderboard', {
       return _.orderBy(eligible, ['score', tieField], ['desc', 'desc']);
     },
 
+    excluded(state: State): LeaderboardEntry[] {
+      // Return excluded entries sorted by total productive time (most time first)
+      return _.orderBy(state.excluded, ['totalProductiveSeconds'], ['desc']);
+    },
+
     monthLabel(state: State): string {
       return moment({ year: state.selectedYear, month: state.selectedMonth - 1 }).format(
         'MMMM YYYY'
       );
+    },
+
+    scoreMethodLabel(): string {
+      const settingsStore = useSettingsStore();
+      const method = settingsStore.leaderboard_score_method || 'utilisation_score';
+      const labels: Record<string, string> = {
+        total_hours: 'Total Hours',
+        average_hours: 'Average Hours/Day',
+        utilisation_score: 'Utilization Score (actual/expected)',
+        weighted_hybrid: 'Weighted Hybrid',
+      };
+      return labels[method] || method;
+    },
+
+    standardDailyHours(): number {
+      const settingsStore = useSettingsStore();
+      return settingsStore.leaderboard_standard_daily_hours || 8;
+    },
+
+    minParticipation(): number {
+      const settingsStore = useSettingsStore();
+      return settingsStore.leaderboard_min_participation_percent || 80;
     },
   },
 
@@ -379,15 +408,43 @@ export const useLeaderboardStore = defineStore('leaderboard', {
           }
         });
 
-        const results = await Promise.all(promises);
+        // Use Promise.allSettled to handle individual host failures gracefully
+        const resultsRaw = await Promise.allSettled(promises);
+        
+        // Collect successful results and log failed hosts
+        const results: (LeaderboardEntry | null)[] = [];
+        const failedHosts: string[] = [];
+        
+        for (let i = 0; i < resultsRaw.length; i++) {
+          const result = resultsRaw[i];
+          const hostname = hosts[i];
+          
+          if (result.status === 'fulfilled') {
+            results.push(result.value);
+          } else {
+            console.warn(`${DBG} [${hostname}] Promise rejected:`, result.reason);
+            failedHosts.push(hostname);
+            results.push(null);
+          }
+        }
+        
+        if (failedHosts.length > 0) {
+          console.warn(`${DBG} Failed hosts (showing partial results):`, failedHosts);
+          this.error = `Partial results: ${failedHosts.length} host(s) failed to load: ${failedHosts.join(', ')}`;
+        }
+        
         console.log(`${DBG} All host results:`, results);
 
-        // Filter: exclude entries that don't meet participation threshold
-        this.entries = results.filter(
-          (entry): entry is LeaderboardEntry =>
-            entry !== null && entry.score > 0
+        // Separate entries into eligible (score > 0) and excluded (have data but score = 0)
+        const allEntries = results.filter(
+          (entry): entry is LeaderboardEntry => entry !== null
         );
-        console.log(`${DBG} Final entries (score > 0):`, this.entries);
+        
+        this.entries = allEntries.filter(entry => entry.score > 0);
+        this.excluded = allEntries.filter(entry => entry.score === 0 && entry.totalProductiveSeconds > 0);
+        
+        console.log(`${DBG} Eligible entries (score > 0):`, this.entries);
+        console.log(`${DBG} Excluded entries (score = 0):`, this.excluded);
       } catch (err) {
         console.error(`${DBG} FATAL ERROR:`, err);
         this.error = 'Failed to load leaderboard data. Please try again.';
