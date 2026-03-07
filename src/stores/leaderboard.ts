@@ -452,5 +452,14 @@ export const useLeaderboardStore = defineStore('leaderboard', {
         this.loading = false;
       }
     },
+
+    displayConsistency(entry: LeaderboardEntry): string {
+      if (!entry || !entry.consistencyScore) return 'N/A';
+      const pct = Math.round(entry.consistencyScore * 100);
+      if (pct >= 90) return `${pct}% - Very Consistent`;
+      if (pct >= 75) return `${pct}% - Consistent`;
+      if (pct >= 50) return `${pct}% - Moderate`;
+      return `${pct}% - Inconsistent`;
+    },
   },
 });
