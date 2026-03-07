@@ -108,7 +108,7 @@ div
     //- Excluded employees section
     div.mt-4(v-if="leaderboardStore.excluded && leaderboardStore.excluded.length > 0")
       h6.mb-3.text-muted
-        icon.mr-2(name="eye-off")
+        icon.mr-2(name="times")
         | Below Participation Threshold
       .table-responsive
         table.table.table-sm.table-hover
@@ -337,7 +337,7 @@ import 'vue-awesome/icons/chevron-left';
 import 'vue-awesome/icons/chevron-right';
 import 'vue-awesome/icons/calendar-day';
 import 'vue-awesome/icons/desktop';
-import 'vue-awesome/icons/eye-off';
+import 'vue-awesome/icons/times';
 import 'vue-awesome/icons/calculator';
 
 import moment from 'moment';
