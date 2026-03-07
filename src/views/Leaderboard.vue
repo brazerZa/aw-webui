@@ -4,7 +4,7 @@ div
     .d-flex.align-items-center.justify-content-between.mb-4
       h3.mb-0
         icon.mr-2(name="trophy")
-        | Employee of the Month
+        | Productivity Leaderboard
 
       .d-flex.align-items-center
         b-btn.mr-2(variant="outline-secondary" size="sm" @click="prevMonth")

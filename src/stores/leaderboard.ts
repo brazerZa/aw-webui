@@ -13,9 +13,11 @@ export interface LeaderboardEntry {
   hostname: string;
   totalProductiveSeconds: number;
   totalTrackedSeconds: number;
-  workingDays: number;
-  actualWorkingDays: number;  // Days with > threshold productive time
+  workingDays: number;  // Total available workdays (Mon-Fri)
+  actualWorkingDays: number;  // Days that met min hours threshold
+  availableDays: number;  // Days available after min participation check
   avgProductiveSecondsPerDay: number;
+  score: number;  // Calculated based on scoring method
 }
 
 interface State {
@@ -37,11 +39,16 @@ export const useLeaderboardStore = defineStore('leaderboard', {
 
   getters: {
     ranked(state: State): LeaderboardEntry[] {
-      return _.orderBy(
-        state.entries.filter(e => e.totalProductiveSeconds > 0),
-        ['totalProductiveSeconds'],
-        ['desc']
+      const settingsStore = useSettingsStore();
+      const tiebreak = settingsStore.leaderboard_tiebreak_method || 'total_hours';
+      
+      // Filter out entries that don't meet eligibility
+      const eligible = state.entries.filter(e => 
+        e.totalProductiveSeconds > 0 && e.availableDays > 0
       );
+      
+      // Sort by score (desc), then by tiebreak method
+      return _.orderBy(eligible, ['score', tiebreak], ['desc', 'desc']);
     },
 
     monthLabel(state: State): string {
@@ -251,28 +258,64 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             console.log(`${DBG} [${hostname}] Daily totals:`, eventsByDate);
             console.log(`${DBG} [${hostname}] Actual working days (>= ${minDailyHours}h):`, actualWorkingDays);
 
-            console.log(`${DBG} [${hostname}] Totals:`, {
-              totalProductiveSeconds,
-              totalTrackedSeconds,
-              productiveHours: (totalProductiveSeconds / 3600).toFixed(1),
-              trackedHours: (totalTrackedSeconds / 3600).toFixed(1),
-              actualWorkingDays,
-              minDailySeconds,
+            // Calculate score based on scoring method
+            const scoreMethod = settingsStore.leaderboard_score_method || 'utilisation_score';
+            const standardDailySeconds = (settingsStore.leaderboard_standard_daily_hours || 8) * 3600;
+            const minParticipation = (settingsStore.leaderboard_min_participation_percent || 80) / 100;
+
+            // Calculate available days (for participation check)
+            const availableDays = Math.floor(workingDays * minParticipation);
+            const meetsParticipation = actualWorkingDays >= availableDays;
+
+            let score = 0;
+            let finalTotalSeconds = totalProductiveSeconds;
+
+            if (!meetsParticipation) {
+              // Doesn't meet minimum participation - score is 0 (will be filtered out)
+              score = 0;
+            } else if (scoreMethod === 'total_hours') {
+              score = finalTotalSeconds;
+            } else if (scoreMethod === 'average_hours') {
+              // Average hours per worked day
+              score = actualWorkingDays > 0 ? finalTotalSeconds / actualWorkingDays : 0;
+            } else if (scoreMethod === 'utilisation_score') {
+              // Utilisation: actual / expected
+              const expectedSeconds = workingDays * standardDailySeconds;
+              score = expectedSeconds > 0 ? finalTotalSeconds / expectedSeconds : 0;
+            } else if (scoreMethod === 'weighted_hybrid') {
+              const utilisationWeight = settingsStore.leaderboard_utilisation_weight || 0.7;
+              const averageWeight = settingsStore.leaderboard_average_weight || 0.3;
+              const expectedSeconds = workingDays * standardDailySeconds;
+              const utilisation = expectedSeconds > 0 ? finalTotalSeconds / expectedSeconds : 0;
+              const average = actualWorkingDays > 0 ? finalTotalSeconds / actualWorkingDays : 0;
+              score = (utilisation * utilisationWeight) + (average * averageWeight);
+            } else {
+              // Default to utilisation score
+              const expectedSeconds = workingDays * standardDailySeconds;
+              score = expectedSeconds > 0 ? finalTotalSeconds / expectedSeconds : 0;
+            }
+
+            console.log(`${DBG} [${hostname}] Score:`, {
+              scoreMethod,
+              score: score.toFixed(4),
+              finalTotalHours: (finalTotalSeconds / 3600).toFixed(2),
+              meetsParticipation,
             });
 
             // Use actualWorkingDays for average (if > 0), otherwise fall back to workingDays
-            // This ensures employees on leave aren't penalized
             const daysForAverage = actualWorkingDays > 0 ? actualWorkingDays : workingDays;
             const avgProductiveSecondsPerDay =
-              daysForAverage > 0 ? totalProductiveSeconds / daysForAverage : 0;
+              daysForAverage > 0 ? finalTotalSeconds / daysForAverage : 0;
 
             return {
               hostname,
-              totalProductiveSeconds,
+              totalProductiveSeconds: finalTotalSeconds,
               totalTrackedSeconds,
               workingDays,
               actualWorkingDays,
+              availableDays: availableDays,
               avgProductiveSecondsPerDay,
+              score,
             };
           } catch (err) {
             console.warn(`${DBG} [${hostname}] FAILED:`, err);
@@ -283,12 +326,12 @@ export const useLeaderboardStore = defineStore('leaderboard', {
         const results = await Promise.all(promises);
         console.log(`${DBG} All host results:`, results);
 
-        // Filter: exclude entries with no productive time OR zero actual working days (below threshold every day)
+        // Filter: exclude entries that don't meet participation threshold
         this.entries = results.filter(
           (entry): entry is LeaderboardEntry =>
-            entry !== null && entry.totalProductiveSeconds > 0 && entry.actualWorkingDays > 0
+            entry !== null && entry.score > 0
         );
-        console.log(`${DBG} Final entries (productive > 0 and actualWorkingDays > 0):`, this.entries);
+        console.log(`${DBG} Final entries (score > 0):`, this.entries);
       } catch (err) {
         console.error(`${DBG} FATAL ERROR:`, err);
         this.error = 'Failed to load leaderboard data. Please try again.';

@@ -49,6 +49,15 @@ interface State {
   leaderboard_min_daily_hours: number;
   leaderboard_excluded_hosts: string[];
 
+  // New leaderboard scoring settings
+  leaderboard_score_method: string;  // "total_hours" | "average_hours" | "utilisation_score" | "weighted_hybrid"
+  leaderboard_standard_daily_hours: number;
+  leaderboard_min_participation_percent: number;
+  leaderboard_max_hours_per_day: number;
+  leaderboard_tiebreak_method: string;  // "total_hours" | "days_worked"
+  leaderboard_utilisation_weight: number;  // for weighted_hybrid: 0-1
+  leaderboard_average_weight: number;  // for weighted_hybrid: 0-1
+
   // Set to true if settings loaded
   _loaded: boolean;
 }
@@ -88,9 +97,17 @@ export const useSettingsStore = defineStore('settings', {
     useMultidevice: false,
     requestTimeout: 30,
 
-    // Leaderboard settings (default: 3 hours minimum per day to count as working)
+    // Leaderboard settings
+    // Default: utilisation score method (most fair for leave)
     leaderboard_min_daily_hours: 3,
     leaderboard_excluded_hosts: [],
+    leaderboard_score_method: 'utilisation_score',
+    leaderboard_standard_daily_hours: 8,
+    leaderboard_min_participation_percent: 80,
+    leaderboard_max_hours_per_day: 0,  // 0 = no cap
+    leaderboard_tiebreak_method: 'total_hours',
+    leaderboard_utilisation_weight: 0.7,
+    leaderboard_average_weight: 0.3,
 
     _loaded: false,
   }),

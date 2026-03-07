@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Malachi - Employee of the Month</title>
+<title>Malachi - Productivity Leaderboard</title>
 <link rel="icon" type="image/png" href="logo.png">
 <style>
 /* ===== Reset & Base ===== */
@@ -378,7 +378,7 @@ body {
 
 <div class="container">
   <div class="header-row">
-    <h2>&#127942; Employee of the Month</h2>
+    <h2>&#127942; Productivity Leaderboard</h2>
     <div class="month-nav">
       <button id="btn-prev" onclick="prevMonth()">&lsaquo;</button>
       <span class="label" id="month-label"></span>
@@ -731,6 +731,38 @@ async function fetchLeaderboard() {
           }
         }
 
+        // Calculate score based on scoring method
+        var scoreMethod = (settings && settings.leaderboard_score_method) || 'utilisation_score';
+        var standardDailySeconds = ((settings && settings.leaderboard_standard_daily_hours) || 8) * 3600;
+        var minParticipation = ((settings && settings.leaderboard_min_participation_percent) || 80) / 100;
+
+        // Calculate available days (for participation check)
+        var availableDays = Math.floor(workingDays * minParticipation);
+        var meetsParticipation = actualWorkingDays >= availableDays;
+
+        var score = 0;
+
+        if (!meetsParticipation) {
+          score = 0;
+        } else if (scoreMethod === 'total_hours') {
+          score = totalProductiveSeconds;
+        } else if (scoreMethod === 'average_hours') {
+          score = actualWorkingDays > 0 ? totalProductiveSeconds / actualWorkingDays : 0;
+        } else if (scoreMethod === 'utilisation_score') {
+          var expectedSeconds = workingDays * standardDailySeconds;
+          score = expectedSeconds > 0 ? totalProductiveSeconds / expectedSeconds : 0;
+        } else if (scoreMethod === 'weighted_hybrid') {
+          var utilisationWeight = (settings && settings.leaderboard_utilisation_weight) || 0.7;
+          var averageWeight = (settings && settings.leaderboard_average_weight) || 0.3;
+          var expectedSeconds2 = workingDays * standardDailySeconds;
+          var utilisation = expectedSeconds2 > 0 ? totalProductiveSeconds / expectedSeconds2 : 0;
+          var average = actualWorkingDays > 0 ? totalProductiveSeconds / actualWorkingDays : 0;
+          score = (utilisation * utilisationWeight) + (average * averageWeight);
+        } else {
+          var expectedSeconds3 = workingDays * standardDailySeconds;
+          score = expectedSeconds3 > 0 ? totalProductiveSeconds / expectedSeconds3 : 0;
+        }
+
         // Use actualWorkingDays for average (if > 0), otherwise fall back to workingDays
         var daysForAverage = actualWorkingDays > 0 ? actualWorkingDays : workingDays;
         var avgProductiveSecondsPerDay = daysForAverage > 0
@@ -742,7 +774,9 @@ async function fetchLeaderboard() {
           totalTrackedSeconds: totalTrackedSeconds,
           workingDays: workingDays,
           actualWorkingDays: actualWorkingDays,
-          avgProductiveSecondsPerDay: avgProductiveSecondsPerDay
+          availableDays: availableDays,
+          avgProductiveSecondsPerDay: avgProductiveSecondsPerDay,
+          score: score
         };
       } catch (err) {
         console.warn('[Leaderboard] Failed for ' + hostname + ':', err);
@@ -754,9 +788,11 @@ async function fetchLeaderboard() {
 
     // 6. Filter and sort - exclude entries with no productive time or zero actual working days
     state.entries = hostResults.filter(function(e) {
-      return e !== null && e.totalProductiveSeconds > 0 && e.actualWorkingDays > 0;
+      return e !== null && e.score > 0;
     });
     state.ranked = state.entries.slice().sort(function(a, b) {
+      // Sort by score, then by total hours for tie-break
+      if (b.score !== a.score) return b.score - a.score;
       return b.totalProductiveSeconds - a.totalProductiveSeconds;
     });
 
