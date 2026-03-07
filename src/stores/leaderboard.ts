@@ -18,6 +18,8 @@ export interface LeaderboardEntry {
   availableDays: number;  // Days available after min participation check
   avgProductiveSecondsPerDay: number;
   score: number;  // Calculated based on scoring method
+  consistencyScore: number;  // Coefficient of variation (lower = more consistent)
+  dailySeconds: number[];  // Productive seconds per worked day (for consistency calc)
 }
 
 interface State {
@@ -42,13 +44,23 @@ export const useLeaderboardStore = defineStore('leaderboard', {
       const settingsStore = useSettingsStore();
       const tiebreak = settingsStore.leaderboard_tiebreak_method || 'total_hours';
       
+      // Map tiebreak method to field name
+      const tiebreakField: Record<string, string> = {
+        total_hours: 'totalProductiveSeconds',
+        days_worked: 'actualWorkingDays',
+        consistency: 'consistencyScore',
+        average_hours: 'avgProductiveSecondsPerDay',
+      };
+      const tieField = tiebreakField[tiebreak] || 'totalProductiveSeconds';
+      
       // Filter out entries that don't meet eligibility
       const eligible = state.entries.filter(e => 
         e.totalProductiveSeconds > 0 && e.availableDays > 0
       );
       
-      // Sort by score (desc), then by tiebreak method
-      return _.orderBy(eligible, ['score', tiebreak], ['desc', 'desc']);
+      // Sort by score (desc), then by tiebreak method (desc for consistency: higher = better)
+      // Note: for consistency, higher is better (lower CV = more consistent)
+      return _.orderBy(eligible, ['score', tieField], ['desc', 'desc']);
     },
 
     monthLabel(state: State): string {
@@ -307,6 +319,27 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             const avgProductiveSecondsPerDay =
               daysForAverage > 0 ? finalTotalSeconds / daysForAverage : 0;
 
+            // Calculate consistency score (coefficient of variation)
+            // CV = stdDev / mean (lower = more consistent)
+            const dailySeconds: number[] = [];
+            for (const date in eventsByDate) {
+              if (eventsByDate[date] >= minDailySeconds) {
+                dailySeconds.push(eventsByDate[date]);
+              }
+            }
+            
+            let consistencyScore = 0;
+            if (dailySeconds.length >= 2) {
+              const mean = dailySeconds.reduce((a, b) => a + b, 0) / dailySeconds.length;
+              const variance = dailySeconds.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / dailySeconds.length;
+              const stdDev = Math.sqrt(variance);
+              consistencyScore = mean > 0 ? stdDev / mean : 0;
+            }
+            // For consistency, lower CV is better. We'll store it as-is (0 = perfectly consistent)
+            // When sorting, higher consistencyScore wins (since we're using it for tiebreak and lower CV = better)
+            // Actually, let's invert it so higher = better (more consistent)
+            consistencyScore = 1 - consistencyScore; // Now 1 = perfectly consistent, 0 = very inconsistent
+
             return {
               hostname,
               totalProductiveSeconds: finalTotalSeconds,
@@ -316,6 +349,8 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               availableDays: availableDays,
               avgProductiveSecondsPerDay,
               score,
+              consistencyScore,
+              dailySeconds,
             };
           } catch (err) {
             console.warn(`${DBG} [${hostname}] FAILED:`, err);

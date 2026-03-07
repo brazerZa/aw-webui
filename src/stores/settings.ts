@@ -54,7 +54,7 @@ interface State {
   leaderboard_standard_daily_hours: number;
   leaderboard_min_participation_percent: number;
   leaderboard_max_hours_per_day: number;
-  leaderboard_tiebreak_method: string;  // "total_hours" | "days_worked"
+  leaderboard_tiebreak_method: string;  // "total_hours" | "days_worked" | "consistency" | "average_hours"
   leaderboard_utilisation_weight: number;  // for weighted_hybrid: 0-1
   leaderboard_average_weight: number;  // for weighted_hybrid: 0-1
 

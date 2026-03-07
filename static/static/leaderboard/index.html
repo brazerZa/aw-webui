@@ -768,6 +768,25 @@ async function fetchLeaderboard() {
         var avgProductiveSecondsPerDay = daysForAverage > 0
           ? totalProductiveSeconds / daysForAverage : 0;
 
+        // Calculate consistency score (coefficient of variation)
+        // CV = stdDev / mean (lower = more consistent)
+        var dailySeconds = [];
+        for (var date in eventsByDate) {
+          if (eventsByDate[date] >= minDailySeconds) {
+            dailySeconds.push(eventsByDate[date]);
+          }
+        }
+        
+        var consistencyScore = 0;
+        if (dailySeconds.length >= 2) {
+          var mean = dailySeconds.reduce(function(a, b) { return a + b; }, 0) / dailySeconds.length;
+          var variance = dailySeconds.reduce(function(sum, val) { return sum + Math.pow(val - mean, 2); }, 0) / dailySeconds.length;
+          var stdDev = Math.sqrt(variance);
+          consistencyScore = mean > 0 ? stdDev / mean : 0;
+        }
+        // Invert so higher = more consistent
+        consistencyScore = 1 - consistencyScore;
+
         return {
           hostname: hostname,
           totalProductiveSeconds: totalProductiveSeconds,
@@ -776,7 +795,8 @@ async function fetchLeaderboard() {
           actualWorkingDays: actualWorkingDays,
           availableDays: availableDays,
           avgProductiveSecondsPerDay: avgProductiveSecondsPerDay,
-          score: score
+          score: score,
+          consistencyScore: consistencyScore
         };
       } catch (err) {
         console.warn('[Leaderboard] Failed for ' + hostname + ':', err);
@@ -790,10 +810,20 @@ async function fetchLeaderboard() {
     state.entries = hostResults.filter(function(e) {
       return e !== null && e.score > 0;
     });
+    
+    // Get tiebreak method from settings
+    var tiebreak = (settings && settings.leaderboard_tiebreak_method) || 'total_hours';
+    
+    // Map tiebreak method to field
+    var tieField = 'totalProductiveSeconds';
+    if (tiebreak === 'days_worked') tieField = 'actualWorkingDays';
+    else if (tiebreak === 'consistency') tieField = 'consistencyScore';
+    else if (tiebreak === 'average_hours') tieField = 'avgProductiveSecondsPerDay';
+    
     state.ranked = state.entries.slice().sort(function(a, b) {
-      // Sort by score, then by total hours for tie-break
+      // Sort by score, then by tiebreak field
       if (b.score !== a.score) return b.score - a.score;
-      return b.totalProductiveSeconds - a.totalProductiveSeconds;
+      return (b[tieField] || 0) - (a[tieField] || 0);
     });
 
   } catch (err) {

@@ -38,6 +38,8 @@ div
         b-form-select(v-model="tiebreakMethod" size="sm")
           option(value="total_hours") Total Hours
           option(value="days_worked") Days Worked
+          option(value="consistency") Consistency (steady hours)
+          option(value="average_hours") Average Hours/Day
 
     // Weighted hybrid options
     div(v-if="scoreMethod === 'weighted_hybrid'").mt-3
@@ -51,24 +53,132 @@ div
           b-form-input(type="number" v-model.number="averageWeight" min="0" max="100" size="sm")
       small.text-muted Weights must add to 100%
 
-  // Section 3: Live Formula Preview
+  // Section 3: Live Formula Preview (enhanced with calculations)
   div.mb-4
     h6 Formula Preview
     div.alert.alert-info
       div(v-if="scoreMethod === 'total_hours'")
         strong Score = Total Productive Hours
-        div.text-muted Sum of all productive hours worked
+        div.text-muted Example: 150h → Score: 150
       div(v-else-if="scoreMethod === 'average_hours'")
         strong Score = Total Hours ÷ Days Worked
-        div.text-muted Average hours per worked day
+        div.text-muted Example: 150h ÷ 18 days → Score: 8.33
       div(v-else-if="scoreMethod === 'utilisation_score'")
         strong Score = Total Hours ÷ (Available Days × {{ standardDailyHours }}h)
-        div.text-muted Actual hours vs expected hours (fair for leave)
+        div.text-muted Example: 140h ÷ ({{ sampleAvailable }} days × {{ standardDailyHours }}h) = {{ sampleUtilisationScore }}
       div(v-else-if="scoreMethod === 'weighted_hybrid'")
         strong Score = (Utilisation × {{ utilisationWeight/100 }}) + (Average × {{ averageWeight/100 }})
         div.text-muted Hybrid of utilisation and average
 
-  // Section 4: Excluded Hosts (keep existing)
+  // Section 4: Live Preview Examples
+  div.mb-4
+    h6 Live Preview Examples
+    div.card
+      div.card-header Examples demonstrate how scoring works with current settings
+      div.card-body
+        // Example A: Leave Fairness
+        div.mb-4
+          h6 Example A: Leave Fairness
+          table.table.table-sm
+            thead
+              tr
+                th Employee
+                th Available Days
+                th Worked Days
+                th Total Hours
+                th Score
+                th Eligible?
+            tbody
+              tr(:class="exampleAWinner >= minEligible ? 'table-success' : 'table-warning'")
+                td Employee A
+                td {{ exampleAAvailable }}
+                td {{ exampleAAvailable }}
+                td {{ exampleATotal }}h
+                td {{ exampleAScore }}
+                td {{ exampleAAvailable >= minEligible ? '✓' : '✗' }}
+              tr(:class="exampleBInner >= minEligible ? 'table-success' : 'table-warning'")
+                td Employee B
+                td {{ exampleBAvailable }}
+                td {{ exampleBAvailable - exampleBLeave }}
+                td {{ exampleBTotal }}h
+                td {{ exampleBScore }}
+                td {{ exampleBAvailable >= minEligible ? '✓' : '✗' }}
+          div.font-weight-bold Winner with current settings: 
+            span.text-success {{ exampleBScore > exampleAScore ? 'Employee B ✓' : 'Employee A ✓' }}
+          small.text-muted Employee B wins despite fewer total hours because leave is factored in
+
+        // Example B: Short Month
+        div
+          h6 Example B: Short Month / Part-time
+          table.table.table-sm
+            thead
+              tr
+                th Employee
+                th Available Days
+                th Worked Days
+                th Total Hours
+                th Score
+                th Eligible?
+            tbody
+              tr(:class="exampleCInner >= minEligible ? 'table-success' : 'table-warning'")
+                td Employee C
+                td {{ exampleCAvailable }}
+                td {{ exampleCAvailable }}
+                td {{ exampleCTotal }}h
+                td {{ exampleCScore }}
+                td {{ exampleCAvailable >= minEligible ? '✓' : '✗' }}
+              tr(:class="exampleDInner >= minEligible ? 'table-success' : 'table-warning'")
+                td Employee D
+                td {{ exampleDAvailable }}
+                td {{ exampleDAvailable }}
+                td {{ exampleDTotal }}h
+                td {{ exampleDScore }}
+                td {{ exampleDAvailable >= minEligible ? '✓' : '✗' }}
+          div.font-weight-bold Winner with current settings: 
+            span.text-success {{ exampleCScore > exampleDScore ? 'Employee C ✓' : 'Employee D ✓' }}
+          small.text-muted Employee C scores higher but may not be eligible if min participation = {{ minParticipation }}%
+
+  // Section 5: Custom Scenario
+  div.mb-4
+    h6 
+      | Custom Scenario 
+      b-btn.ml-2(size="sm" variant="outline-secondary" @click="showCustom = !showCustom") {{ showCustom ? 'Hide' : 'Show' }}
+    
+    div(v-if="showCustom").card.mt-2
+      div.card-body
+        div.row
+          div.col-md-3.mb-2
+            label Available Days
+            b-form-input(type="number" v-model.number="customAvailable" min="1" max="31" size="sm")
+          div.col-md-3.mb-2
+            label Worked Days
+            b-form-input(type="number" v-model.number="customWorked" min="0" :max="customAvailable" size="sm")
+          div.col-md-3.mb-2
+            label Total Hours
+            b-form-input(type="number" v-model.number="customTotal" min="0" size="sm")
+        div.mt-2
+          strong Calculated Score: 
+            span.text-success.font-weight-bold.ml-2 {{ customScore }}
+        div.text-muted.small {{ customExplanation }}
+
+  // Section 5b: Tiebreak Explanation
+  div.mb-4
+    h6 Tie-Break Explanation
+    div.alert.alert-secondary
+      div(v-if="tiebreakMethod === 'total_hours'")
+        strong Total Hours: 
+        | When scores are equal, the employee with more total hours wins.
+      div(v-else-if="tiebreakMethod === 'days_worked'")
+        strong Days Worked: 
+        | When scores are equal, the employee who worked more days wins.
+      div(v-else-if="tiebreakMethod === 'consistency'")
+        strong Consistency: 
+        | When scores are equal, the employee with steadier daily hours wins (lower variation = higher consistency score).
+      div(v-else-if="tiebreakMethod === 'average_hours'")
+        strong Average Hours/Day: 
+        | When scores are equal, the employee with higher daily average wins.
+
+  // Section 6: Excluded Hosts
   div.mb-4
     h6 Excluded Hosts
     div.mt-2
@@ -86,7 +196,7 @@ div
       small.text-muted Currently excluded: 
       span.text-danger {{ excludedHosts.join(', ') }}
 
-  // Section 5: Minimum Daily Hours (keep existing)
+  // Section 7: Minimum Daily Hours
   div.mb-4
     h6 Minimum Hours Per Day
     b-form-input(type="number" v-model.number="minDailyHours" min="0" max="24" step="0.5" size="sm" style="max-width: 200px")
@@ -106,6 +216,11 @@ export default {
     return {
       settingsStore: useSettingsStore(),
       bucketsStore: useBucketsStore(),
+      showCustom: false,
+      // Custom scenario values
+      customAvailable: 20,
+      customWorked: 18,
+      customTotal: 140,
     };
   },
   computed: {
@@ -179,6 +294,108 @@ export default {
     sortedHostnames(): string[] {
       const hosts = this.bucketsStore.hosts || [];
       return hosts.filter(h => h && h !== 'unknown').sort();
+    },
+    
+    // Example calculations
+    minEligible(): number {
+      return Math.floor((this.minParticipation / 100) * 20);
+    },
+    
+    // Example A: Leave Fairness (20 days, 0 leave vs 20 days, 2 leave)
+    exampleAAvailable(): number { return 20; }
+    exampleATotal(): number { return 150; }
+    exampleAWorked(): number { return 20; }
+    exampleAWinner(): number { return 20; }
+    exampleAScore(): string {
+      if (this.scoreMethod === 'total_hours') return '150';
+      if (this.scoreMethod === 'average_hours') return '7.50';
+      if (this.scoreMethod === 'utilisation_score') return (150 / (20 * this.standardDailyHours)).toFixed(2);
+      if (this.scoreMethod === 'weighted_hybrid') {
+        const util = 150 / (20 * this.standardDailyHours);
+        const avg = 150 / 20;
+        return ((util * this.utilisationWeight/100) + (avg * this.averageWeight/100)).toFixed(2);
+      }
+      return '0';
+    },
+    
+    exampleBAvailable(): number { return 20; }
+    exampleBLeave(): number { return 2; }
+    exampleBTotal(): number { return 140; }
+    exampleBWorked(): number { return 18; }
+    exampleBInner(): number { return 18; }
+    exampleBScore(): string {
+      if (this.scoreMethod === 'total_hours') return '140';
+      if (this.scoreMethod === 'average_hours') return '7.78';
+      if (this.scoreMethod === 'utilisation_score') return (140 / (20 * this.standardDailyHours)).toFixed(2);
+      if (this.scoreMethod === 'weighted_hybrid') {
+        const util = 140 / (20 * this.standardDailyHours);
+        const avg = 140 / 18;
+        return ((util * this.utilisationWeight/100) + (avg * this.averageWeight/100)).toFixed(2);
+      }
+      return '0';
+    },
+    
+    // Example B: Short Month (10 days vs 20 days)
+    exampleCAvailable(): number { return 10; }
+    exampleCTotal(): number { return 82; }
+    exampleCWorked(): number { return 10; }
+    exampleCInner(): number { return 10; }
+    exampleCScore(): string {
+      if (this.scoreMethod === 'total_hours') return '82';
+      if (this.scoreMethod === 'average_hours') return '8.20';
+      if (this.scoreMethod === 'utilisation_score') return (82 / (10 * this.standardDailyHours)).toFixed(2);
+      if (this.scoreMethod === 'weighted_hybrid') {
+        const util = 82 / (10 * this.standardDailyHours);
+        const avg = 82 / 10;
+        return ((util * this.utilisationWeight/100) + (avg * this.averageWeight/100)).toFixed(2);
+      }
+      return '0';
+    },
+    
+    exampleDAvailable(): number { return 20; }
+    exampleDTotal(): number { return 150; }
+    exampleDWorked(): number { return 20; }
+    exampleDInner(): number { return 20; }
+    exampleDScore(): string {
+      if (this.scoreMethod === 'total_hours') return '150';
+      if (this.scoreMethod === 'average_hours') return '7.50';
+      if (this.scoreMethod === 'utilisation_score') return (150 / (20 * this.standardDailyHours)).toFixed(2);
+      if (this.scoreMethod === 'weighted_hybrid') {
+        const util = 150 / (20 * this.standardDailyHours);
+        const avg = 150 / 20;
+        return ((util * this.utilisationWeight/100) + (avg * this.averageWeight/100)).toFixed(2);
+      }
+      return '0';
+    },
+    
+    // Sample utilisation score for preview
+    sampleAvailable(): number { return 18; }
+    sampleUtilisationScore(): string {
+      return (this.standardDailyHours * 18 * 0.9 / (18 * this.standardDailyHours)).toFixed(2);
+    },
+    
+    // Custom scenario calculations
+    customScore(): string {
+      const worked = Math.min(this.customWorked, this.customAvailable);
+      if (this.scoreMethod === 'total_hours') return this.customTotal.toString();
+      if (this.scoreMethod === 'average_hours') return worked > 0 ? (this.customTotal / worked).toFixed(2) : '0';
+      if (this.scoreMethod === 'utilisation_score') {
+        const expected = this.customAvailable * this.standardDailyHours;
+        return expected > 0 ? (this.customTotal / expected).toFixed(2) : '0';
+      }
+      if (this.scoreMethod === 'weighted_hybrid') {
+        const util = (this.customAvailable * this.standardDailyHours) > 0 
+          ? this.customTotal / (this.customAvailable * this.standardDailyHours) : 0;
+        const avg = worked > 0 ? this.customTotal / worked : 0;
+        return ((util * this.utilisationWeight/100) + (avg * this.averageWeight/100)).toFixed(2);
+      }
+      return '0';
+    },
+    customExplanation(): string {
+      if (this.scoreMethod === 'total_hours') return `Total hours: ${this.customTotal}h`;
+      if (this.scoreMethod === 'average_hours') return `${this.customTotal}h ÷ ${Math.min(this.customWorked, this.customAvailable)} days = ${this.customScore}`;
+      if (this.scoreMethod === 'utilisation_score') return `${this.customTotal}h ÷ (${this.customAvailable} × ${this.standardDailyHours}h) = ${this.customScore}`;
+      return `Hybrid calculation: ${this.customScore}`;
     },
   },
   async mounted() {
