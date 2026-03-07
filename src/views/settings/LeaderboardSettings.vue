@@ -302,10 +302,10 @@ export default {
     },
     
     // Example A: Leave Fairness (20 days, 0 leave vs 20 days, 2 leave)
-    exampleAAvailable(): number { return 20; }
-    exampleATotal(): number { return 150; }
-    exampleAWorked(): number { return 20; }
-    exampleAWinner(): number { return 20; }
+    exampleAAvailable(): number { return 20; },
+    exampleATotal(): number { return 150; },
+    exampleAWorked(): number { return 20; },
+    exampleAWinner(): number { return 20; },
     exampleAScore(): string {
       if (this.scoreMethod === 'total_hours') return '150';
       if (this.scoreMethod === 'average_hours') return '7.50';
@@ -318,11 +318,11 @@ export default {
       return '0';
     },
     
-    exampleBAvailable(): number { return 20; }
-    exampleBLeave(): number { return 2; }
-    exampleBTotal(): number { return 140; }
-    exampleBWorked(): number { return 18; }
-    exampleBInner(): number { return 18; }
+    exampleBAvailable(): number { return 20; },
+    exampleBLeave(): number { return 2; },
+    exampleBTotal(): number { return 140; },
+    exampleBWorked(): number { return 18; },
+    exampleBInner(): number { return 18; },
     exampleBScore(): string {
       if (this.scoreMethod === 'total_hours') return '140';
       if (this.scoreMethod === 'average_hours') return '7.78';
@@ -336,10 +336,10 @@ export default {
     },
     
     // Example B: Short Month (10 days vs 20 days)
-    exampleCAvailable(): number { return 10; }
-    exampleCTotal(): number { return 82; }
-    exampleCWorked(): number { return 10; }
-    exampleCInner(): number { return 10; }
+    exampleCAvailable(): number { return 10; },
+    exampleCTotal(): number { return 82; },
+    exampleCWorked(): number { return 10; },
+    exampleCInner(): number { return 10; },
     exampleCScore(): string {
       if (this.scoreMethod === 'total_hours') return '82';
       if (this.scoreMethod === 'average_hours') return '8.20';
@@ -352,10 +352,10 @@ export default {
       return '0';
     },
     
-    exampleDAvailable(): number { return 20; }
-    exampleDTotal(): number { return 150; }
-    exampleDWorked(): number { return 20; }
-    exampleDInner(): number { return 20; }
+    exampleDAvailable(): number { return 20; },
+    exampleDTotal(): number { return 150; },
+    exampleDWorked(): number { return 20; },
+    exampleDInner(): number { return 20; },
     exampleDScore(): string {
       if (this.scoreMethod === 'total_hours') return '150';
       if (this.scoreMethod === 'average_hours') return '7.50';
@@ -369,7 +369,7 @@ export default {
     },
     
     // Sample utilisation score for preview
-    sampleAvailable(): number { return 18; }
+    sampleAvailable(): number { return 18; },
     sampleUtilisationScore(): string {
       return (this.standardDailyHours * 18 * 0.9 / (18 * this.standardDailyHours)).toFixed(2);
     },
