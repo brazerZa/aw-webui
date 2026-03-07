@@ -231,13 +231,30 @@ export const useLeaderboardStore = defineStore('leaderboard', {
             }
 
             // Calculate total tracked and productive from categories
+            // Also group by date for daily cap application
+            const productiveByDate: Record<string, number> = {};
             for (const event of catEvents) {
               const categoryName = event.data?.$category || ['Uncategorized'];
               const score = categoryStore.get_category_score(categoryName);
               totalTrackedSeconds += event.duration;
               if (score > 0) {
                 totalProductiveSeconds += event.duration;
+                // Track productive time by date
+                const date = new Date(event.timestamp).toISOString().split('T')[0];
+                if (!productiveByDate[date]) productiveByDate[date] = 0;
+                productiveByDate[date] += event.duration;
               }
+            }
+
+            // Apply daily hour cap if configured
+            const maxHoursPerDay = settingsStore.leaderboard_max_hours_per_day || 0;
+            if (maxHoursPerDay > 0) {
+              const maxSecondsPerDay = maxHoursPerDay * 3600;
+              let cappedTotal = 0;
+              for (const date in productiveByDate) {
+                cappedTotal += Math.min(productiveByDate[date], maxSecondsPerDay);
+              }
+              totalProductiveSeconds = cappedTotal;
             }
 
             // Calculate actual working days by fetching raw events and grouping by date in JS
@@ -320,11 +337,15 @@ export const useLeaderboardStore = defineStore('leaderboard', {
               daysForAverage > 0 ? finalTotalSeconds / daysForAverage : 0;
 
             // Calculate consistency score (coefficient of variation)
-            // CV = stdDev / mean (lower = more consistent)
+            // Use capped productive time if max hours per day is set
             const dailySeconds: number[] = [];
-            for (const date in eventsByDate) {
-              if (eventsByDate[date] >= minDailySeconds) {
-                dailySeconds.push(eventsByDate[date]);
+            const maxSecondsPerDay = (settingsStore.leaderboard_max_hours_per_day || 0) * 3600;
+            for (const date in productiveByDate) {
+              if (productiveByDate[date] >= minDailySeconds) {
+                const dailyValue = maxSecondsPerDay > 0 
+                  ? Math.min(productiveByDate[date], maxSecondsPerDay)
+                  : productiveByDate[date];
+                dailySeconds.push(dailyValue);
               }
             }
             

@@ -698,7 +698,8 @@ async function fetchLeaderboard() {
         var totalProductiveSeconds = 0;
         var totalTrackedSeconds = 0;
 
-        // Calculate totals from categories
+        // Calculate totals from categories - also track by date for daily cap
+        var productiveByDate = {};
         for (var i = 0; i < catEvents.length; i++) {
           var ev = catEvents[i];
           var catName = (ev.data && ev.data.$category) || ['Uncategorized'];
@@ -706,7 +707,22 @@ async function fetchLeaderboard() {
           totalTrackedSeconds += ev.duration;
           if (score > 0) {
             totalProductiveSeconds += ev.duration;
+            // Track productive time by date
+            var pdate = new Date(ev.timestamp).toISOString().split('T')[0];
+            if (!productiveByDate[pdate]) productiveByDate[pdate] = 0;
+            productiveByDate[pdate] += ev.duration;
           }
+        }
+
+        // Apply daily hour cap if configured
+        var maxHoursPerDay = (settings && settings.leaderboard_max_hours_per_day) || 0;
+        if (maxHoursPerDay > 0) {
+          var maxSecondsPerDay = maxHoursPerDay * 3600;
+          var cappedTotal = 0;
+          for (var pdate2 in productiveByDate) {
+            cappedTotal += Math.min(productiveByDate[pdate2], maxSecondsPerDay);
+          }
+          totalProductiveSeconds = cappedTotal;
         }
 
         // Fetch raw events to compute daily totals in JS
