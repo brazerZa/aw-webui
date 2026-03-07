@@ -12,7 +12,7 @@ import { IEvent, IBucket } from './interfaces';
 const COLOR_UNCAT = '#CCC';
 
 let cachedClasses: Category[] | null = null;
-let cachedSettingsLoaded: number | null = null;
+let cachedSettingsLoaded: boolean | null = null;
 
 export function getCachedClasses(): Category[] {
   const settingsStore = useSettingsStore();
