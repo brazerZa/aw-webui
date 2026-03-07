@@ -65,7 +65,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
       return _.orderBy(eligible, ['score', tieField], ['desc', 'desc']);
     },
 
-    excluded(state: State): LeaderboardEntry[] {
+    excludedEntries(state: State): LeaderboardEntry[] {
       // Return excluded entries sorted by total productive time (most time first)
       return _.orderBy(state.excluded, ['totalProductiveSeconds'], ['desc']);
     },

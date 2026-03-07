@@ -106,7 +106,7 @@ div
                   small.ml-2.text-muted {{ progressPercent(entry) }}%
 
     //- Excluded employees section
-    div.mt-4(v-if="leaderboardStore.excluded && leaderboardStore.excluded.length > 0")
+    div.mt-4(v-if="leaderboardStore.excludedEntries && leaderboardStore.excludedEntries.length > 0")
       h6.mb-3.text-muted
         icon.mr-2(name="times")
         | Below Participation Threshold
@@ -120,7 +120,7 @@ div
               th Available Days
               th Reason
           tbody
-            tr(v-for="entry in leaderboardStore.excluded" :key="entry.hostname")
+            tr(v-for="entry in leaderboardStore.excludedEntries" :key="entry.hostname")
               td
                 icon.mr-2(name="desktop" class="text-muted")
                 span.text-muted {{ entry.hostname }}
