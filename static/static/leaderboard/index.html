@@ -652,6 +652,13 @@ async function fetchLeaderboard() {
       return;
     }
 
+    // Get excluded hosts from settings
+    var excludedHosts = (settings && settings.leaderboard_excluded_hosts) || [];
+    if (excludedHosts.length > 0) {
+      hosts = hosts.filter(function(h) { return !excludedHosts.includes(h); });
+    }
+    console.log('[Leaderboard] Excluded hosts:', excludedHosts, 'Filtered hosts:', hosts);
+
     // 4. Compute date range
     var range = getMonthRange(state.selectedYear, state.selectedMonth);
     var monthStart = range[0];
